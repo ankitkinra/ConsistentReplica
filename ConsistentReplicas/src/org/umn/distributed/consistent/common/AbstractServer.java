@@ -38,13 +38,17 @@ public abstract class AbstractServer {
 		postRegister();
 	}
 
-	protected abstract void preRegister();
+	protected void preRegister(){
+		
+	}
 
 	protected void register() {
 
 	}
 
-	protected abstract void postRegister();
+	protected void postRegister(){
+		
+	}
 
 	protected void shutdown() {
 		preUnRegister();
@@ -52,13 +56,17 @@ public abstract class AbstractServer {
 		postUnRegister();
 	}
 
-	protected abstract void preUnRegister();
+	protected void preUnRegister(){
+		
+	}
 
 	protected void unRegister() {
 
 	}
 
-	protected abstract void postUnRegister();
+	protected void postUnRegister(){
+		
+	}
 
 	protected void initCoordinator() {
 		//TODO

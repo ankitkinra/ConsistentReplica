@@ -8,9 +8,6 @@ public abstract class AbstractServer {
 		SEQUENTIAL, QUORUM,
 	}
 
-	protected IReadStrategy readStrategy;
-	protected IWriteStrategy writeStrategy;
-
 	private Machine myInfo;
 	private boolean coordinator;
 	private String IP;
@@ -84,23 +81,17 @@ public abstract class AbstractServer {
 	/*
 	 * Post and read details. implementation will vary based on the protocol
 	 */
-	public String post(String message, String parentId) {
-		return writeStrategy.write(message, parentId);
-	}
+	public abstract String post(String message, String parentId);
 
 	/*
 	 * Read all the posts with ids
 	 */
-	public String readItemList() {
-		return readStrategy.readItemList();
-	}
+	public abstract String readItemList();
 
 	/*
 	 * Show details for one post
 	 */
-	public String readItem(String id) {
-		return readStrategy.readItem(id);
-	}
+	public abstract String readItem(String id);
 
 	/*
 	 * Actually writes the content. Implementation depends on the type of server

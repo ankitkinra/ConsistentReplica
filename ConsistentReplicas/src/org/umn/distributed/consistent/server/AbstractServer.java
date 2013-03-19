@@ -1,6 +1,8 @@
-package org.umn.distributed.consistent.common;
+package org.umn.distributed.consistent.server;
 
 import java.util.TreeMap;
+
+import org.umn.distributed.consistent.common.Machine;
 
 public abstract class AbstractServer {
 
@@ -73,6 +75,12 @@ public abstract class AbstractServer {
 		 * Also we need to heartbeat all the known servers
 		 */
 	}
+	
+	
+	/**TCP Operations
+	 * 
+	 */
+	
 
 	/**
 	 * Client Operations

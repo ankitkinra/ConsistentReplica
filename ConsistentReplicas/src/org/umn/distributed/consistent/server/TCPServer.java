@@ -1,4 +1,4 @@
-package org.umn.distributed.consistent.common;
+package org.umn.distributed.consistent.server;
 
 import java.net.ServerSocket;
 import java.net.Socket;

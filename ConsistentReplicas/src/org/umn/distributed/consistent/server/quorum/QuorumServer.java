@@ -1,6 +1,6 @@
-package org.umn.distributed.consistent.quorum;
+package org.umn.distributed.consistent.server.quorum;
 
-import org.umn.distributed.consistent.common.AbstractServer;
+import org.umn.distributed.consistent.server.AbstractServer;
 
 public class QuorumServer extends AbstractServer {
 	private final int TOTAL_QUORUM_STRENGTH;
@@ -32,30 +32,6 @@ public class QuorumServer extends AbstractServer {
 							WRITE_QUORUM_STRENGTH, READ_QUORUM_STRENGTH,
 							TOTAL_QUORUM_STRENGTH));
 		}
-
-	}
-
-	@Override
-	protected void preRegister() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	protected void postRegister() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	protected void preUnRegister() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	protected void postUnRegister() {
-		// TODO Auto-generated method stub
 
 	}
 

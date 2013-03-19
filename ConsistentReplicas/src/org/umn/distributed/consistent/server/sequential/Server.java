@@ -1,6 +1,6 @@
-package org.umn.distributed.consistent.sequential;
+package org.umn.distributed.consistent.server.sequential;
 
-import org.umn.distributed.consistent.common.AbstractServer;
+import org.umn.distributed.consistent.server.AbstractServer;
 
 public class Server extends AbstractServer {
 

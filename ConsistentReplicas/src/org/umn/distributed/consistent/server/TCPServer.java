@@ -4,6 +4,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class TCPServer {
+	
+	TcpServerDelegate delegate;
+	int numThreads = 0;
+	public TCPServer(TcpServerDelegate delegate, int numThreads) {
+		this.delegate = delegate;
+		this.numThreads = numThreads;
+	}
 
 	public static void server() {
 		ServerSocket welcomeSocket = new ServerSocket(6789);

@@ -32,7 +32,7 @@ public class Utils {
 	
 	public static int findFreePort(int startNumber) {
 		while(!isPortAvailable(startNumber)) {
-			if(isValidPort(startNumber)) {
+			if(!isValidPort(startNumber)) {
 				return -1;
 			}
 			startNumber++;

@@ -1,5 +1,7 @@
 package org.umn.distributed.consistent.common;
 
+import javax.rmi.CORBA.Tie;
+
 import org.apache.log4j.Logger;
 
 public class Article {
@@ -12,10 +14,6 @@ public class Article {
 	private String title;
 	private String content;
 
-	public Article() {
-
-	}
-
 	public Article(int id, int parentId, String title, String content) {
 		this.id = id;
 		this.parentId = parentId;
@@ -26,17 +24,33 @@ public class Article {
 	public int getId() {
 		return id;
 	}
+	
+	public void setId(int id) {
+		this.id = id;
+	}
 
 	public int getParentId() {
 		return parentId;
 	}
 
+	public void setParentId(int parentId) {
+		this.parentId = parentId;
+	}
+	
 	public String getTitle() {
 		return title;
+	}
+	
+	public void setTitle(String title) {
+		this.title = title;
 	}
 
 	public String getContent() {
 		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
 	}
 
 	@Override

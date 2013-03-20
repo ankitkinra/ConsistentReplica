@@ -108,5 +108,4 @@ public abstract class AbstractServer {
 	public boolean write() {
 		return true;
 	}
-
 }

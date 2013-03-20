@@ -4,7 +4,7 @@ import java.util.TreeMap;
 
 import org.umn.distributed.consistent.common.Machine;
 
-public abstract class AbstractServer {
+public abstract class AbstractServer implements TcpServerDelegate{
 
 	public enum STRATEGY {
 		SEQUENTIAL, QUORUM,

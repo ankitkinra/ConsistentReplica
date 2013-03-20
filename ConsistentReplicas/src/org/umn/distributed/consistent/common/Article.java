@@ -1,8 +1,5 @@
 package org.umn.distributed.consistent.common;
 
-import javax.rmi.CORBA.Tie;
-
-import org.apache.log4j.Logger;
 
 public class Article {
 	public static final int SHORT_TITLE_CHARS = 1;
@@ -40,7 +37,7 @@ public class Article {
 	public String getTitle() {
 		return title;
 	}
-	
+
 	public void setTitle(String title) {
 		this.title = title;
 	}

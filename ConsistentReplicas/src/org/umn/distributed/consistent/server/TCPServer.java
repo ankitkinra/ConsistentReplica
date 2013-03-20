@@ -1,5 +1,6 @@
 package org.umn.distributed.consistent.server;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
@@ -66,12 +67,34 @@ public class TCPServer implements Runnable {
 
 		@Override
 		public void run() {
-			InputStream is = socket.getInputStream();
-			byte buffer[] = new byte[1024];
-			byte readBytes[] = new byte[1024];
+			InputStream is;
+			int buffSize = 1024;
+			byte buffer[] = new byte[buffSize];
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			int start = 0;
-			
-			delegate.handleRequest(socket.)
+			int count;
+			try {
+				is = socket.getInputStream();
+				count = is.read(buffer, start, buffSize);
+				while(count > -1) {
+					bos.write(buffer, start, count);
+					start += count;
+					count = is.read(buffer, start, buffSize);
+				}
+				buffer = delegate.handleRequest(bos.toByteArray());
+				socket.getOutputStream().write(buffer);
+			} catch (IOException e) {
+				logger.error("Error communicating with client", e);
+			}
+			finally {
+				try {
+					//TODO: Check do we really want to close it or not.
+					this.socket.close();
+				}
+				catch(IOException ios) {
+					logger.warn("Error closing socket", ios);
+				}
+			}
 		}
 	}
 }

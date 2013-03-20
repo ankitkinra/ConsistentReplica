@@ -108,4 +108,10 @@ public abstract class AbstractServer implements TcpServerDelegate{
 	public boolean write() {
 		return true;
 	}
+	
+	@Override
+	public byte[] handleRequest(byte[] request) {
+		
+	}
+
 }

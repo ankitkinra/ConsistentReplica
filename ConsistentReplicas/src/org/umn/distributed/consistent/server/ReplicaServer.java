@@ -18,7 +18,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	private TCPServer externalTcpServer;
 	private int externalPort;
 	
-	private ReplicaServer(STRATEGY strategy,
+	protected ReplicaServer(STRATEGY strategy,
 			String coordinatorIP, int coordinatorPort) {
 		super(Props.SERVER_INTERNAL_PORT, Props.INTERNAL_SERVER_THREADS);
 		this.externalTcpServer = new TCPServer(this, Props.EXTERNAL_SERVER_THREADS);

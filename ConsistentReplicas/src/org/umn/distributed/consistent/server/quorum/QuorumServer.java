@@ -16,19 +16,19 @@ import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.AbstractServer;
+import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.ReplicaServer.STRATEGY;
 
-public class QuorumServer extends AbstractServer {
+public class QuorumServer extends ReplicaServer {
 	private static final byte[] READ_LIST_COMMAND = null;
 	private static final int NETWORK_TIMEOUT = 100;
 	private Logger logger = Logger.getLogger(this.getClass());
 	private static final String WRITE_COMMAND = "%%ARTICLE%%";
 	private static final String ENCODING = "UTF8";
 
-	public QuorumServer(String iP, int port, STRATEGY strategy,
-			String coordinatorIP, int coordinatorPort, int totalQuorum,
-			int readQuorum, int writeQuorum) {
-		super(iP, port, strategy, coordinatorIP, coordinatorPort);
+	public QuorumServer(STRATEGY strategy, String coordinatorIP,
+			int coordinatorPort) {
+		super(strategy, coordinatorIP, coordinatorPort);
 		validateParameters();
 	}
 
@@ -49,7 +49,7 @@ public class QuorumServer extends AbstractServer {
 	}
 
 	@Override
-	public String post(String message, String parentId) {
+	public String post(String message) {
 		Article aToWrite = Article.parseArticle(message);
 		// need to get the article Id from the coordinator
 		HashSet<Machine> successfulServers = new HashSet<Machine>();

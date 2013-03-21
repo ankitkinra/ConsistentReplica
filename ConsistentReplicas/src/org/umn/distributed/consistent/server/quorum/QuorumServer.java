@@ -64,7 +64,6 @@ public class QuorumServer extends ReplicaServer {
 
 		// once write is done just return
 		return aToWrite.toString();
-
 	}
 
 	private void executeWriteRequestOnWriteQuorum(

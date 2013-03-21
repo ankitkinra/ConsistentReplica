@@ -1,48 +1,53 @@
 package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
-import java.util.TreeMap;
 
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
-import org.umn.distributed.consistent.common.Utils;
 
 public abstract class ReplicaServer extends AbstractServer {
 	public enum STRATEGY {
 		SEQUENTIAL, QUORUM,
 	}
-	
+
 	private boolean coordinator;
 	private Machine coordinatorMachine;
 	private STRATEGY strategy;
 	private TCPServer externalTcpServer;
 	private int externalPort;
-	
-	protected ReplicaServer(STRATEGY strategy,
-			String coordinatorIP, int coordinatorPort) {
+
+	protected ReplicaServer(STRATEGY strategy, String coordinatorIP,
+			int coordinatorPort) {
 		super(Props.SERVER_INTERNAL_PORT, Props.INTERNAL_SERVER_THREADS);
-		this.externalTcpServer = new TCPServer(this, Props.EXTERNAL_SERVER_THREADS);
+		this.externalTcpServer = new TCPServer(this,
+				Props.EXTERNAL_SERVER_THREADS);
 		this.strategy = strategy;
 	}
-	
+
 	@Override
-	public void start() throws Exception{
-		super.start();
-		preRegister();
-		register();
-		postRegister();
+	public void start() throws Exception {
+		try {
+			super.start();
+			preRegister();
+			register();
+			postRegister();
+		}
+		catch (Exception e) {
+			stop();
+			throw e;
+		}
 	}
 
-	protected void preRegister(){
-		
+	protected void preRegister() {
+
 	}
 
 	protected void register() {
-//		this.coordinatorMachine = new Machine(id, iP, coordinatorPort);
+		// this.coordinatorMachine = new Machine(id, iP, coordinatorPort);
 	}
 
-	protected void postRegister(){
-		
+	protected void postRegister() throws IOException{
+		this.externalPort = this.externalTcpServer.startListening(this.externalPort);
 	}
 
 	protected void shutdown() {
@@ -51,32 +56,30 @@ public abstract class ReplicaServer extends AbstractServer {
 		postUnRegister();
 	}
 
-	protected void preUnRegister(){
-		
+	protected void preUnRegister() {
+
 	}
 
 	protected void unRegister() {
 
 	}
 
-	protected void postUnRegister(){
-		
+	protected void postUnRegister() {
+
 	}
 
 	protected void initCoordinator() {
-		//TODO
+		// TODO
 		/**
-		 * this will start a listener on some port which listens to 
-		 * other servers request
-		 * Also we need to heartbeat all the known servers
+		 * this will start a listener on some port which listens to other
+		 * servers request Also we need to heartbeat all the known servers
 		 */
 	}
-	
-	
-	/**TCP Operations
+
+	/**
+	 * TCP Operations
 	 * 
 	 */
-	
 
 	/**
 	 * Client Operations
@@ -101,7 +104,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	 * Actually writes the content. Implementation depends on the type of server
 	 * (Primary, coordinator, normal server)
 	 */
-	public boolean write() {
+	public String write(String message) {
 		return true;
 	}
 }

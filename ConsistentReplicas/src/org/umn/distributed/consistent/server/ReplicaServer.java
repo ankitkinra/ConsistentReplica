@@ -1,29 +1,28 @@
 package org.umn.distributed.consistent.server;
 
+import java.io.IOException;
 import java.util.TreeMap;
 
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
+import org.umn.distributed.consistent.common.Utils;
 
 public abstract class ReplicaServer extends AbstractServer {
 	public enum STRATEGY {
 		SEQUENTIAL, QUORUM,
 	}
-
-	private boolean coordinator;
-	private String coordinatorIP;
-	private int coordinatorPort;
-	private STRATEGY strategy;
 	
-	// TODO think if we can change this to list sorted in increasing order
-	private TreeMap<Integer, Machine> knownClients = new TreeMap<Integer, Machine>();
+	private boolean coordinator;
+	private Machine coordinatorMachine;
+	private STRATEGY strategy;
+	private TCPServer externalTcpServer;
+	private int externalPort;
 	
 	private ReplicaServer(STRATEGY strategy,
 			String coordinatorIP, int coordinatorPort) {
-		super(Props.SERVER_INTERNAL_PORT, Props.REPLICA_SERVER_THREADS);
+		super(Props.SERVER_INTERNAL_PORT, Props.INTERNAL_SERVER_THREADS);
+		this.externalTcpServer = new TCPServer(this, Props.EXTERNAL_SERVER_THREADS);
 		this.strategy = strategy;
-		this.coordinatorIP = coordinatorIP;
-		this.coordinatorPort = coordinatorPort;
 	}
 	
 	@Override
@@ -39,7 +38,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	protected void register() {
-
+//		this.coordinatorMachine = new Machine(id, iP, coordinatorPort);
 	}
 
 	protected void postRegister(){

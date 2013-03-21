@@ -8,7 +8,8 @@ public class Props {
 	public static String ENCODING;
 	public static int SERVER_EXTERNAL_PORT;
 	public static int SERVER_INTERNAL_PORT;
-	public static int REPLICA_SERVER_THREADS;
+	public static int INTERNAL_SERVER_THREADS;
+	public static int EXTERNAL_SERVER_THREADS;
 	public static int COORDINATOR_SERVER_THREADS; 
 	
 	public static void loadProperties() {
@@ -19,7 +20,8 @@ public class Props {
 			//TODO: validate the port numbers before using
 			SERVER_EXTERNAL_PORT = Integer.parseInt(prop.getProperty("serverExternalPort"));
 			SERVER_INTERNAL_PORT = Integer.parseInt(prop.getProperty("serverInternalPort"));
-			REPLICA_SERVER_THREADS = Integer.parseInt(prop.getProperty("replicaServerThreads"));
+			INTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty("internalServerThreads"));
+			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty("externalServerThreads"));
 			COORDINATOR_SERVER_THREADS = Integer.parseInt(prop.getProperty("coordinatorServerThreads"));
 		} catch (IOException ex) {
 			ex.printStackTrace();

@@ -1,9 +1,21 @@
 package org.umn.distributed.consistent.common;
 
+
 public class Machine {
 	private int id;
 	private String IP;
 	private int port;
+
+	public Machine(String iP, int port) {
+		super();
+		IP = iP;
+		this.port = port;
+	}
+
+	public Machine(int id, String iP, int port) {
+		this(iP, port);
+		this.id = id;
+	}
 
 	public String getIP() {
 		return IP;
@@ -12,18 +24,13 @@ public class Machine {
 	public int getPort() {
 		return port;
 	}
-	
-	public Machine(String iP, int port) {
-		super();
-		IP = iP;
-		this.port = port;
-	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((IP == null) ? 0 : IP.hashCode());
+		result = prime * result + id;
 		result = prime * result + port;
 		return result;
 	}
@@ -42,6 +49,8 @@ public class Machine {
 				return false;
 		} else if (!IP.equals(other.IP))
 			return false;
+		if (id != other.id)
+			return false;
 		if (port != other.port)
 			return false;
 		return true;
@@ -50,13 +59,9 @@ public class Machine {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Machine [IP=");
-		builder.append(IP);
-		builder.append(", port=");
-		builder.append(port);
-		builder.append("]");
+		builder.append("Machine [id=").append(id).append(", IP=").append(IP)
+				.append(", port=").append(port).append("]");
 		return builder.toString();
 	}
 
-	
 }

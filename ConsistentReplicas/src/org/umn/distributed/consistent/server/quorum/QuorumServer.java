@@ -1,5 +1,6 @@
 package org.umn.distributed.consistent.server.quorum;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -136,7 +137,9 @@ public class QuorumServer extends ReplicaServer {
 	private void populatWriteQuorum(Integer articleId,
 			HashSet<Machine> successfulServers, HashSet<Machine> failedServers) {
 		// TODO Auto-generated method stub
-
+		/**
+		 * Need to ask the coordinator for the quorum
+		 */
 	}
 
 	/**
@@ -297,8 +300,12 @@ public class QuorumServer extends ReplicaServer {
 		@Override
 		public void run() {
 			// TODO Auto-generated method stub
-			dataRead = TCPClient.sendData(getSocket(this.serverToRead),
-					READ_LIST_COMMAND);
+			try {
+				dataRead = TCPClient.sendData(this.serverToRead,
+						READ_LIST_COMMAND);
+			} catch (IOException e) {
+				logger.error("ReadServiceError",e);
+			}
 			logger.info(String.format("dataRead =%s from server = %s",
 					dataRead, serverToRead));
 			latchToDecrement.countDown();
@@ -323,11 +330,15 @@ public class QuorumServer extends ReplicaServer {
 		@Override
 		public void run() {
 			// TODO Auto-generated method stub
-			dataRead = TCPClient.sendData(
-					getSocket(this.serverToWrite),
-					Utils.stringToByte(
-							WRITE_COMMAND.replaceAll("%%ARTICLE%%",
-									articleToWrite.toString()), ENCODING));
+			try {
+				dataRead = TCPClient.sendData(
+						this.serverToWrite,
+						Utils.stringToByte(
+								WRITE_COMMAND.replaceAll("%%ARTICLE%%",
+										articleToWrite.toString()), ENCODING));
+			} catch (IOException e) {
+				logger.error("WriteServiceError",e);
+			}
 			logger.info(String.format("dataRead =%s from server = %s",
 					dataRead, serverToWrite));
 			latchToDecrement.countDown();

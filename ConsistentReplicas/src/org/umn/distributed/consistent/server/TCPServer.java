@@ -25,7 +25,7 @@ public class TCPServer implements Runnable {
 		this.delegate = delegate;
 		this.numThreads = numThreads;
 	}
-	
+
 	public int startListening(int port) throws IOException {
 		port = Utils.findFreePort(port);
 		this.serverSocket = new ServerSocket(port);
@@ -37,10 +37,12 @@ public class TCPServer implements Runnable {
 
 	@Override
 	public void run() {
-		logger.debug("Started tcpServer on port:" + this.serverSocket.getLocalPort());
+		logger.debug("Started tcpServer on port:"
+				+ this.serverSocket.getLocalPort());
 		while (true) {
 			try {
-				this.executerService.execute(new Handler(serverSocket.accept()));
+				this.executerService
+						.execute(new Handler(serverSocket.accept()));
 			} catch (IOException e) {
 				logger.error("Error accepting connection from client", e);
 			}
@@ -48,19 +50,21 @@ public class TCPServer implements Runnable {
 	}
 
 	public void stop() {
-		logger.debug("Stopping TcpServer on port:" + this.serverSocket.getLocalPort());
+		logger.debug("Stopping TcpServer on port:"
+				+ this.serverSocket.getLocalPort());
 		try {
 			this.serverSocket.close();
-		}
-		catch(IOException ioe) {
+		} catch (IOException ioe) {
 			logger.debug("Interrupted ServerSocket in while listening", ioe);
 		}
 		logger.debug("ServerSocket closed");
 		this.executerService.shutdown();
 		try {
-			if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.MILLISECONDS)) {
+			if (!this.executerService.awaitTermination(STOP_TIMEOUT,
+					TimeUnit.MILLISECONDS)) {
 				this.executerService.shutdownNow();
-				if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.SECONDS)) {
+				if (!this.executerService.awaitTermination(STOP_TIMEOUT,
+						TimeUnit.SECONDS)) {
 					logger.error("Thread pool did not terminate");
 				}
 			}
@@ -82,35 +86,36 @@ public class TCPServer implements Runnable {
 
 		@Override
 		public void run() {
-			InputStream is;
+			InputStream is = null;
 			int buffSize = 1024;
 			byte buffer[] = new byte[buffSize];
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			int start = 0;
-			int count;
+			int count = 0;
 			try {
 				is = socket.getInputStream();
 				count = is.read(buffer, start, buffSize);
-				while(count > -1) {
+				while (count > -1) {
 					bos.write(buffer, start, count);
 					start += count;
 					count = is.read(buffer, start, buffSize);
 				}
 				buffer = delegate.handleRequest(bos.toByteArray());
 				socket.getOutputStream().write(buffer);
+				is.close();
 				bos.close();
-				//TODO:add specific handling for different exceptions types
-				//based on what exception is thrown when the remote client closes the 
-				//socket
+				
+				// TODO:add specific handling for different exceptions types
+				// based on what exception is thrown when the remote client
+				// closes the
+				// socket
 			} catch (IOException e) {
 				logger.error("Error communicating with client", e);
-			}
-			finally {
+			} finally {
 				try {
-					//TODO: Check do we really want to close it or not.
+					// TODO: Check do we really want to close it or not.
 					this.socket.close();
-				}
-				catch(IOException ios) {
+				} catch (IOException ios) {
 					logger.warn("Error closing socket", ios);
 				}
 			}

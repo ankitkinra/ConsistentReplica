@@ -1,34 +1,52 @@
 package org.umn.distributed.consistent.common;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.Socket;
 
 public class TCPClient {
 
-	public static byte[] sendData(Socket clientSocket, byte[] data) {
+	public static byte[] sendData(Machine remoteMachine, byte[] data)
+			throws IOException {
+		/**
+		 * This will open a local socket and send the data to the remoteMachine
+		 */
+		Socket clientSocket = null;
+		int buffSize = 1024;
+		InputStream is = null;
+		byte[] returnMessage = new byte[1024];
 		try {
+			clientSocket = new Socket(remoteMachine.getIP(),
+					remoteMachine.getPort());
 			clientSocket.getOutputStream().write(data);
-//			DataOutputStream outToServer = new DataOutputStream(
-//					clientSocket.getOutputStream());
-//			DataInputStream outToServer = new DataInputStream(
-//					clientSocket.getInputStream());
-			byte readBytes[] = new byte[1024];
-			byte buffer[] = new byte[1024];
+			
 			int count = 0;
 			int start = 0;
-			while((count = clientSocket.getInputStream().read(readBytes, start, 1024)) != -1) {
-				
+
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+			is = clientSocket.getInputStream();
+			count = is.read(returnMessage, start, buffSize);
+			while (count > -1) {
+				bos.write(returnMessage, start, count);
+				start += count;
+				count = is.read(returnMessage, start, buffSize);
 			}
-//			modifiedSentence = inFromServer.read();
+			is.close();
+			returnMessage = bos.toByteArray();
+			bos.close();
+
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw e;
+		} finally {
+			try {
+				clientSocket.close();
+			} catch (IOException ios) {
+				throw ios;
+			}
 		}
-		return null;
+
+		return returnMessage;
 	}
 }

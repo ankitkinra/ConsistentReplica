@@ -15,16 +15,15 @@ import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
-import org.umn.distributed.consistent.server.AbstractServer;
 import org.umn.distributed.consistent.server.ReplicaServer;
-import org.umn.distributed.consistent.server.ReplicaServer.STRATEGY;
 
 public class QuorumServer extends ReplicaServer {
 	private static final byte[] READ_LIST_COMMAND = null;
 	private static final int NETWORK_TIMEOUT = 100;
 	private Logger logger = Logger.getLogger(this.getClass());
-	private static final String WRITE_COMMAND = "%%ARTICLE%%";
+	private static String WRITE_COMMAND = "%%ARTICLE%%";
 	private static final String ENCODING = "UTF8";
+	private static final Object WRITE_SUCCESS = null;
 
 	public QuorumServer(STRATEGY strategy, String coordinatorIP,
 			int coordinatorPort) {
@@ -36,15 +35,9 @@ public class QuorumServer extends ReplicaServer {
 
 	}
 
-	/*
-	 * (non-Javadoc) This server will contact the coordinator to get the latest
-	 * id
-	 * 
-	 * @see org.umn.distributed.consistent.common.AbstractServer#write()
-	 */
-	@Override
+	
 	public boolean write() {
-		// TODO Auto-generated method stub
+		// this is local write for me
 		return false;
 	}
 
@@ -64,6 +57,7 @@ public class QuorumServer extends ReplicaServer {
 
 		// once write is done just return
 		return aToWrite.toString();
+
 	}
 
 	private void executeWriteRequestOnWriteQuorum(
@@ -96,7 +90,7 @@ public class QuorumServer extends ReplicaServer {
 						str = Utils.convertByteToString(rs.dataRead,
 								rs.dataRead.length, 0, "UTF8");
 						if (str.equals(WRITE_SUCCESS)) {
-							writeStatus.put(rs.serverToRead, true);
+							writeStatus.put(rs.serverToWrite, true);
 						} else {
 							// basically failed
 							rs.dataRead = null;
@@ -115,7 +109,7 @@ public class QuorumServer extends ReplicaServer {
 				logger.error("Error", ie);
 				// interrupt all other threads
 				// TODO other servers should kill
-				for (ReadService rs : threadsToWrite) {
+				for (WriteService rs : threadsToWrite) {
 					if (rs.dataRead == null) {
 						rs.interrupt();
 					}
@@ -124,10 +118,10 @@ public class QuorumServer extends ReplicaServer {
 				// if not thread has some value add it to the success servers
 				// else let
 				// it be in failed set
-				for (ReadService rs : threadsToWrite) {
+				for (WriteService rs : threadsToWrite) {
 					if (rs.dataRead != null) {
-						successfulServers.add(rs.serverToRead);
-						failedServers.remove(rs.serverToRead);
+						successfulServers.add(rs.serverToWrite);
+						failedServers.remove(rs.serverToWrite);
 					}
 				}
 			}
@@ -311,14 +305,14 @@ public class QuorumServer extends ReplicaServer {
 
 	private class WriteService extends Thread {
 
-		Machine serverToRead;
+		Machine serverToWrite;
 		Article articleToWrite = null;
 		CountDownLatch latchToDecrement;
 		byte[] dataRead;
 
 		WriteService(Machine serverToRead, Article aToWrite,
 				CountDownLatch latchToDecrement) {
-			this.serverToRead = serverToRead;
+			this.serverToWrite = serverToRead;
 			this.latchToDecrement = latchToDecrement;
 			this.articleToWrite = aToWrite;
 		}
@@ -327,12 +321,12 @@ public class QuorumServer extends ReplicaServer {
 		public void run() {
 			// TODO Auto-generated method stub
 			dataRead = TCPClient.sendData(
-					getSocket(this.serverToRead),
+					getSocket(this.serverToWrite),
 					Utils.stringToByte(
-							WRITE_COMMAND.format("%%ARTICLE%%",
+							WRITE_COMMAND.replaceAll("%%ARTICLE%%",
 									articleToWrite.toString()), ENCODING));
 			logger.info(String.format("dataRead =%s from server = %s",
-					dataRead, serverToRead));
+					dataRead, serverToWrite));
 			latchToDecrement.countDown();
 		}
 

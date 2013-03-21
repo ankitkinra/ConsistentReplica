@@ -338,4 +338,10 @@ public class QuorumServer extends ReplicaServer {
 		}
 
 	}
+
+	@Override
+	public byte[] handleRequest(byte[] request) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

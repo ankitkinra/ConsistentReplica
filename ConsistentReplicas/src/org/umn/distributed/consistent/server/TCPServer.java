@@ -19,43 +19,58 @@ public class TCPServer implements Runnable {
 	private int numThreads = 0;
 	private ExecutorService executerService;
 	private ServerSocket serverSocket;
+	private Thread thread;
 
 	public TCPServer(TcpServerDelegate delegate, int numThreads) {
 		this.delegate = delegate;
 		this.numThreads = numThreads;
 	}
-
+	
 	public int startListening(int port) throws IOException {
 		port = Utils.findFreePort(port);
-		serverSocket = new ServerSocket(port);
+		this.serverSocket = new ServerSocket(port);
 		this.executerService = Executors.newFixedThreadPool(numThreads);
+		this.thread = new Thread(this);
+		this.thread.start();
 		return port;
 	}
 
 	@Override
 	public void run() {
+		logger.debug("Started tcpServer on port:" + this.serverSocket.getLocalPort());
 		while (true) {
 			try {
-				executerService.execute(new Handler(serverSocket.accept()));
+				this.executerService.execute(new Handler(serverSocket.accept()));
 			} catch (IOException e) {
 				logger.error("Error accepting connection from client", e);
 			}
 		}
 	}
 
-	void shutdownAndAwaitTermination(ExecutorService pool) {
-		pool.shutdown();
+	public void stop() {
+		logger.debug("Stopping TcpServer on port:" + this.serverSocket.getLocalPort());
 		try {
-			if (!pool.awaitTermination(STOP_TIMEOUT, TimeUnit.MILLISECONDS)) {
-				pool.shutdownNow();
-				if (!pool.awaitTermination(STOP_TIMEOUT, TimeUnit.SECONDS)) {
+			this.serverSocket.close();
+		}
+		catch(IOException ioe) {
+			logger.debug("Interrupted ServerSocket in while listening", ioe);
+		}
+		logger.debug("ServerSocket closed");
+		this.executerService.shutdown();
+		try {
+			if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.MILLISECONDS)) {
+				this.executerService.shutdownNow();
+				if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.SECONDS)) {
 					logger.error("Thread pool did not terminate");
 				}
 			}
 		} catch (InterruptedException ie) {
-			pool.shutdownNow();
+			this.executerService.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
+		logger.debug("ExecutorService stopped");
+		this.thread.interrupt();
+		logger.debug("TCPServer thread stopped");
 	}
 
 	private class Handler implements Runnable {
@@ -83,6 +98,10 @@ public class TCPServer implements Runnable {
 				}
 				buffer = delegate.handleRequest(bos.toByteArray());
 				socket.getOutputStream().write(buffer);
+				bos.close();
+				//TODO:add specific handling for different exceptions types
+				//based on what exception is thrown when the remote client closes the 
+				//socket
 			} catch (IOException e) {
 				logger.error("Error communicating with client", e);
 			}

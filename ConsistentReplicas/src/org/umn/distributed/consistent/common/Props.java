@@ -6,20 +6,21 @@ import java.util.Properties;
 
 public class Props {
 	public static String ENCODING;
-	public static int GETLIST_REQUEST_INTERVAL;
-	public static int SERVER_UDP_PORT;
-	public static String PING_PORT;
-	public static String FREE_PORT_LIST;
-
+	public static int SERVER_EXTERNAL_PORT;
+	public static int SERVER_INTERNAL_PORT;
+	public static int REPLICA_SERVER_THREADS;
+	public static int COORDINATOR_SERVER_THREADS; 
+	
 	public static void loadProperties() {
 		Properties prop = new Properties();
 		try {
 			prop.load(new FileInputStream("config.properties"));
 			ENCODING = prop.getProperty("encoding");
-			GETLIST_REQUEST_INTERVAL = Integer.parseInt(prop.getProperty("serverListUpdateInterval"));
-			SERVER_UDP_PORT = Integer.parseInt(prop.getProperty("serverUdpPort"));
-			PING_PORT = prop.getProperty("serverPingPort");
-			FREE_PORT_LIST = prop.getProperty("freePortList");
+			//TODO: validate the port numbers before using
+			SERVER_EXTERNAL_PORT = Integer.parseInt(prop.getProperty("serverExternalPort"));
+			SERVER_INTERNAL_PORT = Integer.parseInt(prop.getProperty("serverInternalPort"));
+			REPLICA_SERVER_THREADS = Integer.parseInt(prop.getProperty("replicaServerThreads"));
+			COORDINATOR_SERVER_THREADS = Integer.parseInt(prop.getProperty("coordinatorServerThreads"));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

@@ -2,6 +2,7 @@ package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
 
+import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 
@@ -15,6 +16,8 @@ public abstract class ReplicaServer extends AbstractServer {
 	private STRATEGY strategy;
 	private TCPServer externalTcpServer;
 	private int externalPort;
+	//Need to access bb using syncronized methods
+	protected BulletinBoard bb = new BulletinBoard();
 
 	protected ReplicaServer(STRATEGY strategy, String coordinatorIP,
 			int coordinatorPort) {
@@ -105,6 +108,17 @@ public abstract class ReplicaServer extends AbstractServer {
 	 * (Primary, coordinator, normal server)
 	 */
 	public String write(String message) {
-		return true;
+		return null;
 	}
+	
+	public byte[] handleRequest(byte[] request){
+		//TODO handle and if not handled
+		boolean notHandled = true;
+		if(notHandled){
+			return handleSpecificRequest("");
+		}
+		return null;
+	}
+	
+	public abstract byte[] handleSpecificRequest(String request);
 }

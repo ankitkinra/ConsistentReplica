@@ -23,7 +23,7 @@ public class QuorumServer extends ReplicaServer {
 	private Logger logger = Logger.getLogger(this.getClass());
 	private static String WRITE_COMMAND = "%%ARTICLE%%";
 	private static final String ENCODING = "UTF8";
-	private static final Object WRITE_SUCCESS = null;
+	private static final String WRITE_SUCCESS = "SUCCESS";
 
 	public QuorumServer(STRATEGY strategy, String coordinatorIP,
 			int coordinatorPort) {
@@ -36,9 +36,13 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	
-	public boolean write() {
+	public String write(String message) {
 		// this is local write for me
-		return false;
+		Article a = Article.parseArticle(message);
+		if(a != null){
+			this.bb.addArticle(a);
+		}
+		return null;
 	}
 
 	@Override
@@ -83,22 +87,21 @@ public class QuorumServer extends ReplicaServer {
 			}
 			try {
 				writeQuorumlatch.await(NETWORK_TIMEOUT, TimeUnit.SECONDS);
-				// TODO add a timeout and then fail the operation
-				for (WriteService rs : threadsToWrite) {
+				for (WriteService wr : threadsToWrite) {
 					String str = null;
 					try {
-						str = Utils.convertByteToString(rs.dataRead,
-								rs.dataRead.length, 0, "UTF8");
+						str = Utils.convertByteToString(wr.dataRead,
+								wr.dataRead.length, 0, "UTF8");
 						if (str.equals(WRITE_SUCCESS)) {
-							writeStatus.put(rs.serverToWrite, true);
+							writeStatus.put(wr.serverToWrite, true);
 						} else {
 							// basically failed
-							rs.dataRead = null;
+							wr.dataRead = null;
 						}
 
 					} catch (UnsupportedEncodingException e) {
 						logger.error("str null due to encoding exception", e);
-						rs.dataRead = null;
+						wr.dataRead = null;
 						// this will not allow this server to be removed from
 						// the failedservers
 
@@ -109,9 +112,9 @@ public class QuorumServer extends ReplicaServer {
 				logger.error("Error", ie);
 				// interrupt all other threads
 				// TODO other servers should kill
-				for (WriteService rs : threadsToWrite) {
-					if (rs.dataRead == null) {
-						rs.interrupt();
+				for (WriteService wr : threadsToWrite) {
+					if (wr.dataRead == null) {
+						wr.interrupt();
 					}
 				}
 			} finally {
@@ -333,8 +336,7 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	@Override
-	public byte[] handleRequest(byte[] request) {
-		// TODO Auto-generated method stub
+	public byte[] handleSpecificRequest(String request) {
 		return null;
 	}
 }

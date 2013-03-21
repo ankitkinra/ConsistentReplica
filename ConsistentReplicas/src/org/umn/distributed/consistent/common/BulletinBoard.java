@@ -11,14 +11,14 @@ public class BulletinBoard {
 	public static final String FORMAT_ENDS = "}";
 	private TreeMap<Integer, BulletinBoardEntry> map = new TreeMap<Integer, BulletinBoard.BulletinBoardEntry>();
 
-	public boolean addArticle(Article article) {
+	public synchronized boolean addArticle(Article article) {
 		// TODO: handle malicious coordinator. It should never return the same
 		// id back
 		map.put(article.getId(), new BulletinBoardEntry(article));
 		return true;
 	}
 
-	public boolean addArticleReply(Article article) {
+	public synchronized boolean addArticleReply(Article article) {
 		if (addArticle(article)) {
 			BulletinBoardEntry boardEntry = map.get(article.getParentId());
 			if (boardEntry == null) {
@@ -39,7 +39,7 @@ public class BulletinBoard {
 	 * Use this method to check if the BulletinBoard contains the id in the map
 	 * or not.
 	 */
-	public boolean isArticle(int id) {
+	public synchronized boolean containsArticle(int id) {
 		return map.containsKey(id);
 	}
 
@@ -50,7 +50,7 @@ public class BulletinBoard {
 	 * of quorum consistency. Even though this method returns null, isArticle()
 	 * can still return true (case 2).
 	 */
-	public Article getArticle(int id) {
+	public synchronized Article getArticle(int id) {
 		BulletinBoardEntry boardEntry = map.get(id);
 		if (boardEntry == null) {
 			return null;
@@ -59,7 +59,7 @@ public class BulletinBoard {
 		}
 	}
 
-	public List<Integer> getReplyIdList(int id) {
+	public synchronized List<Integer> getReplyIdList(int id) {
 		BulletinBoardEntry boardEntry = map.get(id);
 		if (boardEntry == null) {
 			return null;
@@ -80,7 +80,7 @@ public class BulletinBoard {
 	/*
 	 * This method assumes that map is in synch
 	 */
-	private String toString(boolean detailed) {
+	private synchronized String toString(boolean detailed) {
 		StringBuilder builder = new StringBuilder();
 		// TODO: Check if returns an increasing order iterator or not.
 		Iterator<Integer> it = map.descendingKeySet().descendingIterator();

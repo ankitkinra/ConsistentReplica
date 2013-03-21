@@ -37,4 +37,10 @@ public class Server extends AbstractServer {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public byte[] handleRequest(byte[] request) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

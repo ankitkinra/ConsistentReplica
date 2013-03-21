@@ -127,4 +127,10 @@ public class Utils {
 		}
 		return null;
 	}
+	
+	
+	public static String convertByteToString(byte[] data, int offset,
+			int length, String encoding) throws UnsupportedEncodingException {
+		return new String(data, offset, length, encoding);
+	}
 }

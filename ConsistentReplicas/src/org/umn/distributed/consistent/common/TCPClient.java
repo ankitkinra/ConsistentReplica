@@ -14,39 +14,36 @@ public class TCPClient {
 		 */
 		Socket clientSocket = null;
 		int buffSize = 1024;
+		int count = 0;
 		InputStream is = null;
-		byte[] returnMessage = new byte[1024];
+		byte[] buffer = new byte[buffSize];
 		try {
 			clientSocket = new Socket(remoteMachine.getIP(),
 					remoteMachine.getPort());
 			clientSocket.getOutputStream().write(data);
-			
-			int count = 0;
-			int start = 0;
-
+			clientSocket.
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
 			is = clientSocket.getInputStream();
-			count = is.read(returnMessage, start, buffSize);
-			while (count > -1) {
-				bos.write(returnMessage, start, count);
-				start += count;
-				count = is.read(returnMessage, start, buffSize);
+			while (is.available() > 0 && (count = is.read(buffer)) > -1) {
+				bos.write(buffer, 0, count);
 			}
+			bos.flush();
 			is.close();
-			returnMessage = bos.toByteArray();
+			buffer = bos.toByteArray();
 			bos.close();
 
 		} catch (IOException e) {
 			throw e;
 		} finally {
 			try {
-				clientSocket.close();
+				if (clientSocket != null) {
+					clientSocket.close();
+				}
 			} catch (IOException ios) {
 				throw ios;
 			}
 		}
 
-		return returnMessage;
+		return buffer;
 	}
 }

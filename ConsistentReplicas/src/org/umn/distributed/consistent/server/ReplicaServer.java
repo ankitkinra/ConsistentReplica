@@ -21,20 +21,20 @@ public abstract class ReplicaServer extends AbstractServer {
 	// Need to access bb using syncronized methods
 	protected BulletinBoard bb = new BulletinBoard();
 
-	protected ReplicaServer(STRATEGY strategy, String coordinatorIP,
-			int coordinatorPort) {
+	protected ReplicaServer(STRATEGY strategy, boolean isCoordinator,
+			String coordinatorIP, int coordinatorPort) {
 		super(strategy, Props.SERVER_INTERNAL_PORT,
 				Props.INTERNAL_SERVER_THREADS);
 		this.externalTcpServer = new TCPServer(this,
 				Props.EXTERNAL_SERVER_THREADS);
 		this.strategy = strategy;
+		this.coordinator = isCoordinator;
+		if (this.coordinator) {
+			coordinatorIP = Utils.getLocalServerIp();
+			coordinatorPort = Props.COORDINATOR_PORT;
+		}
 		// TODO: set id
 		this.coordinatorMachine = new Machine(coordinatorIP, coordinatorPort);
-	}
-
-	protected ReplicaServer(STRATEGY strategy, boolean coordinator) {
-		this(strategy, Utils.getLocalServerIp(), Props.COORDINATOR_PORT);
-		this.coordinator = true;
 	}
 
 	protected void startCoordinator() throws Exception {
@@ -66,11 +66,13 @@ public abstract class ReplicaServer extends AbstractServer {
 
 	@Override
 	public void startSpecific() throws Exception {
+		logger.debug("Start replica server");
 		try {
 			preRegister();
 			register();
 			postRegister();
 		} catch (Exception e) {
+			logger.error("Failed to registerer to " + coordinatorMachine, e);
 			// TODO: fix it
 			// stop();
 			throw e;
@@ -78,6 +80,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	protected void preRegister() throws Exception {
+		logger.debug("Pre registering");
 		if (this.coordinator) {
 			startCoordinator();
 		}
@@ -87,6 +90,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	protected void register() throws Exception {
+		logger.debug("Registering machine to coordinator");
 		String registerMessage = createRegisterMessage();
 		byte resp[] = TCPClient.sendData(coordinatorMachine,
 				Utils.stringToByte(registerMessage, Props.ENCODING));
@@ -94,9 +98,11 @@ public abstract class ReplicaServer extends AbstractServer {
 		if (!respStr.startsWith(COMMAND_SUCCESS)) {
 			throw new Exception("Coordinator rejected to register the replica");
 		}
+		logger.info("Registered to coordinator " + coordinatorMachine);
 	}
 
 	protected void postRegister() throws IOException {
+		logger.debug("Post registering");
 	}
 
 	protected void shutdown() {

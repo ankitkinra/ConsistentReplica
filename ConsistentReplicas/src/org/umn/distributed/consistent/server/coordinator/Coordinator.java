@@ -57,6 +57,7 @@ public abstract class Coordinator extends AbstractServer {
 			String req[] = reqStr.split(COMMAND_PARAM_SEPARATOR);
 			Machine machine = new Machine(Integer.parseInt(req[1]), req[2],
 					Integer.parseInt(req[3]), Integer.parseInt(req[4]));
+			logger.info(machine.toString() + " trying to register");
 			this.knownClients.put(machine.getId(), machine);
 			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
 		}

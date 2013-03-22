@@ -1,5 +1,6 @@
 package org.umn.distributed.consistent.server;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,6 +28,7 @@ public class TCPServer implements Runnable {
 	}
 
 	public int startListening(int port) throws IOException {
+		logger.debug("Starting the tcp listener");
 		port = Utils.findFreePort(port);
 		this.serverSocket = new ServerSocket(port);
 		this.executerService = Executors.newFixedThreadPool(numThreads);
@@ -90,16 +92,13 @@ public class TCPServer implements Runnable {
 			int buffSize = 1024;
 			byte buffer[] = new byte[buffSize];
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			int start = 0;
 			int count = 0;
 			try {
 				is = socket.getInputStream();
-				count = is.read(buffer, start, buffSize);
-				while (count > -1) {
-					bos.write(buffer, start, count);
-					start += count;
-					count = is.read(buffer, start, buffSize);
+				while (is.available() > 0 && (count = is.read(buffer)) > -1) {
+					bos.write(buffer, 0, count);
 				}
+				bos.flush();
 				buffer = delegate.handleRequest(bos.toByteArray());
 				socket.getOutputStream().write(buffer);
 				is.close();

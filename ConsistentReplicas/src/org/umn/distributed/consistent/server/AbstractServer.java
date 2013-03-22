@@ -39,11 +39,14 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	}
 
 	public void start() throws Exception {
+		logger.debug("starting server");
 		try {
 			this.port = this.tcpServer.startListening(this.port);
 			// TODO: Add id once you get it form server
 			myInfo = new Machine(Utils.getLocalServerIp(), this.port);
+			startSpecific();
 		} catch (IOException ioe) {
+			logger.debug("Error starting server. Stopping now");
 			this.stop();
 			logger.error("Error starting tcp server", ioe);
 			throw ioe;

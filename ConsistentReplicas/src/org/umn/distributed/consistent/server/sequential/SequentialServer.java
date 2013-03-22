@@ -9,11 +9,12 @@ import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
+import org.umn.distributed.consistent.server.AbstractServer.STRATEGY;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class SequentialServer extends ReplicaServer {
-	public SequentialServer(String coordinatorIP, int coordinatorPort) {
-		super(STRATEGY.SEQUENTIAL, coordinatorIP, coordinatorPort);
+	public SequentialServer(boolean isCoordinator, String coordinatorIP, int coordinatorPort) {
+		super(STRATEGY.SEQUENTIAL, isCoordinator, coordinatorIP, coordinatorPort);
 	}
 
 	@Override

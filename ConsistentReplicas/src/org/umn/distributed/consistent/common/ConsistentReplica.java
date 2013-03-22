@@ -8,8 +8,13 @@ public class ConsistentReplica {
 	public static void main(String[] args) {
 		// TODO: add actual command line parameters
 		Props.loadProperties();
-		ReplicaServer replicaServer = new SequentialServer("localhost",
-				Props.COORDINATOR_PORT);
+		ReplicaServer replicaServer = new SequentialServer(true, null, 0);
+		try {
+			replicaServer.start();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 }

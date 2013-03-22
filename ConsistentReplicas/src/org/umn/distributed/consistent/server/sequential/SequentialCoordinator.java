@@ -11,26 +11,20 @@ import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class SequentialCoordinator extends Coordinator {
 
-	public static final String COMMAND_WRITE = "CWRITE";
+	public static final String WRITE_COMMAND = "CWRITE";
 
 	public SequentialCoordinator() {
 		super(STRATEGY.SEQUENTIAL);
 	}
 
 	@Override
-	public byte[] handleRequest(byte[] request) {
-		String reqStr = Utils.byteToString(request, Props.ENCODING);
-		if (reqStr.startsWith(COMMAND_WRITE)) {
+	public byte[] handleSpecificRequest(String reqStr) {
+		if (reqStr.startsWith(WRITE_COMMAND)) {
 			String[] req = reqStr.split("-");
 			Article article = Article.parseArticle(req[1]);
 			// TODO: write this to local and other replicas
 		}
 		return handleSpecificRequest(reqStr);
-	}
-
-	@Override
-	public byte[] handleSpecificRequest(String str) {
-		return null;
 	}
 
 	private class WriteService implements Runnable {

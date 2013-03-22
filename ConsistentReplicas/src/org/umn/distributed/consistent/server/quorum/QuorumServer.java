@@ -22,8 +22,8 @@ public class QuorumServer extends ReplicaServer {
 	private static final byte[] READ_LIST_COMMAND = null;
 	private static final int NETWORK_TIMEOUT = 100;
 
-	public QuorumServer(String coordinatorIP, int coordinatorPort) {
-		super(STRATEGY.QUORUM, coordinatorIP, coordinatorPort);
+	public QuorumServer(boolean isCoordinator, String coordinatorIP, int coordinatorPort) {
+		super(STRATEGY.QUORUM, isCoordinator, coordinatorIP, coordinatorPort);
 		validateParameters();
 	}
 

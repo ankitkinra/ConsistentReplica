@@ -1,11 +1,11 @@
 package org.umn.distributed.consistent.server.quorum;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -17,14 +17,53 @@ import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
+import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
 
 public class QuorumServer extends ReplicaServer {
-	private static final byte[] READ_LIST_COMMAND = null;
+	private static final String READ_LIST_COMMAND = "GET_BB|FROM_ID=%%ARTICLE_ID%%";
 	private static final int NETWORK_TIMEOUT = 100;
+	private Integer lastSyncedId;
 
-	public QuorumServer(boolean isCoordinator, String coordinatorIP, int coordinatorPort) {
+	public QuorumServer(boolean isCoordinator, String coordinatorIP,
+			int coordinatorPort) {
 		super(STRATEGY.QUORUM, isCoordinator, coordinatorIP, coordinatorPort);
 		validateParameters();
+	}
+
+	private void syncBB() {
+		/**
+		 * assemble read quorum, which can contain at least one server (in a one
+		 * cluster environment) Now merge the BB of read quorum replace own.bb
+		 * with merged bb : shadow copying in a syncronized method
+		 * 
+		 */
+		HashMap<Machine, String> responseMap = getBBFromReadQuorum();
+		// merge stage
+		mergeResponsesWithLocal(responseMap);
+		lastSyncedId = this.bb.getMaxId();
+	}
+
+	private void mergeResponsesWithLocal(HashMap<Machine, String> responseMap) {
+		BulletinBoard mergedBulletinBoard = null;
+		boolean first = true;
+		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
+			// get BB from string
+			if (first) {
+				mergedBulletinBoard = BulletinBoard
+						.parseBulletinBoard(machineBBStr.getValue());
+				first = false;
+			} else {
+				BulletinBoard bbThis = BulletinBoard
+						.parseBulletinBoard(machineBBStr.getValue());
+				// now merge
+				mergedBulletinBoard = BulletinBoard.mergeBB(
+						mergedBulletinBoard, bbThis);
+			}
+
+		}
+		// once the bulletinBoard is merged, we can just replace
+		this.bb.mergeWithMe(mergedBulletinBoard);
+		
 	}
 
 	private void validateParameters() {
@@ -49,7 +88,13 @@ public class QuorumServer extends ReplicaServer {
 		HashMap<Machine, Boolean> writeStatus = new HashMap<Machine, Boolean>();
 		Integer articleId = -1;
 		do {
-			populatWriteQuorum(articleId, successfulServers, failedServers);
+			try {
+				populatWriteQuorum(articleId, successfulServers, failedServers);
+			} catch (IOException e) {
+				logger.error(
+						"Error in populating the quorum, no option but to try again",
+						e);
+			}
 			executeWriteRequestOnWriteQuorum(writeStatus, successfulServers,
 					failedServers, aToWrite);
 		} while (failedServers.size() > 0);
@@ -92,14 +137,7 @@ public class QuorumServer extends ReplicaServer {
 						// basically failed
 						wr.dataRead = null;
 					}
-					// } catch (UnsupportedEncodingException e) {
-					// logger.error("str null due to encoding exception", e);
-					// wr.dataRead = null;
-					// // this will not allow this server to be removed from
-					// // the failedservers
-					//
-					// }
-					//
+
 				}
 			} catch (InterruptedException ie) {
 				logger.error("Error", ie);
@@ -127,11 +165,11 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	private void populatWriteQuorum(Integer articleId,
-			HashSet<Machine> successfulServers, HashSet<Machine> failedServers) {
-		// TODO Auto-generated method stub
-		/**
-		 * Need to ask the coordinator for the quorum
-		 */
+			HashSet<Machine> successfulServers, HashSet<Machine> failedServers)
+			throws IOException {
+		CoordinatorClientCallFormatter.getArticleIdWithWriteQuorum(
+				this.coordinatorMachine, articleId, successfulServers,
+				failedServers);
 	}
 
 	/**
@@ -141,6 +179,16 @@ public class QuorumServer extends ReplicaServer {
 	@Override
 	public String readItemList() {
 
+		HashMap<Machine, String> responseMap = getBBFromReadQuorum();
+
+		// once we have populated and know that required quorum was achieved
+
+		mergeResponsesWithLocal(responseMap);
+		// TODO reset the thread which does sync as sync just happened
+		return bb.toString();
+	}
+
+	private HashMap<Machine, String> getBBFromReadQuorum() {
 		/**
 		 * Any request can be modelled as <code>
 		 * 
@@ -156,32 +204,15 @@ public class QuorumServer extends ReplicaServer {
 		HashSet<Machine> failedServers = new HashSet<Machine>();
 		HashMap<Machine, String> responseMap = new HashMap<Machine, String>();
 		do {
-			populatReadQuorum(successfulServers, failedServers);
+			try {
+				populatReadQuorum(successfulServers, failedServers);
+			} catch (IOException e) {
+				logger.error("quorum popualtion failed", e);
+			}
 			executeReadRequestOnReadQuorum(responseMap, successfulServers,
 					failedServers);
 		} while (failedServers.size() > 0);
-
-		// once we have populated and know that required quorum was achieved
-
-		// parse and create BB from each response
-
-		List<BulletinBoard> boardsFromReadQuorum = convertResponseToBB(responseMap);
-
-		// find out the maximum id replica and replace own BB with that, as we
-		// need to show client
-		// consistent view.
-
-		BulletinBoard bb = getMaxIdBulletinBoard(boardsFromReadQuorum);
-
-		// replace/merge own BB, race conditions
-		/*
-		 * If we wrote something just now, and we got a stale copy from the
-		 * maximum server then we can loose some latest write and in effect make
-		 * quorum inconsistent, hence we cannot ideally replace we need to
-		 * merge.
-		 */
-
-		return bb.toString();
+		return responseMap;
 	}
 
 	private void executeReadRequestOnReadQuorum(
@@ -204,16 +235,9 @@ public class QuorumServer extends ReplicaServer {
 				// TODO add a timeout and then fail the operation
 				for (ReadService rs : threadsToRead) {
 					String str = null;
-					// try {
+
 					str = Utils.byteToString(rs.dataRead, Props.ENCODING);
 					responseMap.put(rs.serverToRead, str);
-					// } catch (UnsupportedEncodingException e) {
-					// logger.error("str null due to encoding exception", e);
-					// rs.dataRead = null;
-					// // this will not allow this server to be removed from
-					// // the failedservers
-					//
-					// }
 
 				}
 			} catch (InterruptedException ie) {
@@ -241,41 +265,36 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	private void populatReadQuorum(HashSet<Machine> successfulServers,
-			HashSet<Machine> failedServers) {
-		// TODO Auto-generated method stub
+			HashSet<Machine> failedServers) throws IOException {
+		CoordinatorClientCallFormatter.getReadQuorum(coordinatorMachine,
+				successfulServers, failedServers);
 
 	}
 
 	private BulletinBoard getMaxIdBulletinBoard(
 			List<BulletinBoard> boardsFromReadQuorum) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private List<BulletinBoard> convertResponseToBB(
-			HashMap<Machine, String> responseMap) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private Socket getSocket(Machine server) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private List<Machine> getReadQuorum(int numberOfServers) {
-		return getQuorum(true, numberOfServers);
-	}
-
-	private List<Machine> getQuorum(boolean readQuorum, int numberOfServers) {
-		// TODO Auto-generated method stub
-		return null;
+		BulletinBoard maxIdBB = null;
+		if (boardsFromReadQuorum != null) {
+			for (BulletinBoard bb : boardsFromReadQuorum) {
+				if (maxIdBB == null) {
+					maxIdBB = bb;
+				} else {
+					if (maxIdBB.getMaxId() < bb.getMaxId()) {
+						maxIdBB = bb;
+					}
+				}
+			}
+		}
+		return maxIdBB;
 	}
 
 	@Override
 	public String readItem(String id) {
-		// TODO Auto-generated method stub
-		return null;
+		/*
+		 * Assemble the quorum and then
+		 */
+
+		return this.bb.getArticle(Integer.parseInt(id)).toString();
 	}
 
 	private class ReadService extends Thread {
@@ -290,10 +309,12 @@ public class QuorumServer extends ReplicaServer {
 
 		@Override
 		public void run() {
-			// TODO Auto-generated method stub
 			try {
-				dataRead = TCPClient.sendData(this.serverToRead,
-						READ_LIST_COMMAND);
+				dataRead = TCPClient
+						.sendData(this.serverToRead, Utils
+								.stringToByte(READ_LIST_COMMAND.replaceAll(
+										"%%ARTICLE_ID%%",
+										String.valueOf(lastSyncedId))));
 			} catch (IOException e) {
 				logger.error("ReadServiceError", e);
 			}

@@ -1,7 +1,6 @@
 package org.umn.distributed.consistent.common;
 
-
-public class Article {
+public class Article{
 	public static final int SHORT_TITLE_CHARS = 1;
 	public static final int SHORT_CONTENT_CHARS = 16;
 	public static final String FORMAT_START = "[";
@@ -18,10 +17,17 @@ public class Article {
 		this.content = content;
 	}
 
+	public Article(Article toCopy){
+		this.id = toCopy.id;
+		this.parentId = toCopy.parentId;
+		this.title = toCopy.title;
+		this.content = toCopy.content;
+	}
+
 	public int getId() {
 		return id;
 	}
-	
+
 	public void setId(int id) {
 		this.id = id;
 	}
@@ -33,11 +39,11 @@ public class Article {
 	public void setParentId(int parentId) {
 		this.parentId = parentId;
 	}
-	
+
 	public boolean isRoot() {
 		return this.parentId == 0;
 	}
-	
+
 	public String getTitle() {
 		return title;
 	}

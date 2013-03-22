@@ -1,46 +1,92 @@
 package org.umn.distributed.consistent.common;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.management.RuntimeErrorException;
 
 public class BulletinBoard {
 
 	public static final String FORMAT_START = "{";
 	public static final String FORMAT_ENDS = "}";
+	// TODO need to protect this map under ReentrantReadWriteLock
+
+	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
+	private final Lock readL = rwl.readLock();
+	private final Lock writeL = rwl.writeLock();
+
 	private TreeMap<Integer, BulletinBoardEntry> map = new TreeMap<Integer, BulletinBoard.BulletinBoardEntry>();
 
-	public synchronized boolean addArticle(Article article) {
+	public boolean addArticle(Article article) {
 		// TODO: handle malicious coordinator. It should never return the same
 		// id back
-		map.put(article.getId(), new BulletinBoardEntry(article));
+		writeL.lock();
+		try {
+			if (!containsArticle(article.getId())) {
+				map.put(article.getId(), new BulletinBoardEntry(article));
+			} else {
+				// TODO update reply list as content/title cannot be changed
+			}
+		} finally {
+
+			writeL.unlock();
+		}
 		return true;
 	}
 
-	public synchronized boolean addArticleReply(Article article) {
-		if (addArticle(article)) {
-			BulletinBoardEntry boardEntry = map.get(article.getParentId());
-			if (boardEntry == null) {
-				boardEntry = new BulletinBoardEntry(null);
-				boardEntry.addReplyId(article.getId());
-				map.put(article.getParentId(), boardEntry);
-			} else {
-				boardEntry.addReplyId(article.getId());
+	/**
+	 * Why can parentBoardEntry be null, this can happen when this replica gets
+	 * selected for a quorum write which has a reply to a an article it has not
+	 * yet seen, but will see soon in a sync operation
+	 * 
+	 * @param article
+	 * @return
+	 */
+	public boolean addArticleReply(Article article) {
+		writeL.lock();
+		// now we are assured that any previous writes are complete
+		try {
+			if (addArticle(article)) {
+				BulletinBoardEntry boardEntry = map.get(article.getParentId());
+				if (boardEntry == null) {
+					boardEntry = new BulletinBoardEntry(null);
+					boardEntry.addReplyId(article.getId());
+					map.put(article.getParentId(), boardEntry);
+				} else {
+					boardEntry.addReplyId(article.getId());
+				}
+				// TODO: handle malicious coordinator. It should never return
+				// the
+				// same id back.
+				return true;
 			}
-			// TODO: handle malicious coordinator. It should never return the
-			// same id back.
-			return true;
+			return false;
+		} finally {
+			writeL.unlock();
 		}
-		return false;
+
 	}
 
 	/*
 	 * Use this method to check if the BulletinBoard contains the id in the map
 	 * or not.
 	 */
-	public synchronized boolean containsArticle(int id) {
-		return map.containsKey(id);
+	public boolean containsArticle(int id) {
+		readL.lock();
+		try {
+			return map.containsKey(id);
+		} finally {
+			readL.unlock();
+		}
 	}
 
 	/*
@@ -50,21 +96,40 @@ public class BulletinBoard {
 	 * of quorum consistency. Even though this method returns null, isArticle()
 	 * can still return true (case 2).
 	 */
-	public synchronized Article getArticle(int id) {
-		BulletinBoardEntry boardEntry = map.get(id);
-		if (boardEntry == null) {
-			return null;
-		} else {
-			return boardEntry.getArticle();
+	public Article getArticle(int id) {
+		readL.lock();
+		try {
+			BulletinBoardEntry boardEntry = map.get(id);
+			if (boardEntry == null) {
+				return null;
+			} else {
+				return new Article(boardEntry.getArticle());
+			}
+		} finally {
+			readL.unlock();
 		}
 	}
 
-	public synchronized List<Integer> getReplyIdList(int id) {
-		BulletinBoardEntry boardEntry = map.get(id);
-		if (boardEntry == null) {
-			return null;
-		} else {
-			return boardEntry.getReplyIdList();
+	public Integer getMaxId() {
+		readL.lock();
+		try {
+			return map.lastEntry().getKey();
+		} finally {
+			readL.unlock();
+		}
+	}
+
+	public Set<Integer> getReplyIdList(int id) {
+		readL.lock();
+		try {
+			BulletinBoardEntry boardEntry = map.get(id);
+			if (boardEntry == null) {
+				return null;
+			} else {
+				return boardEntry.getReplyIdList();
+			}
+		} finally {
+			readL.unlock();
 		}
 	}
 
@@ -80,34 +145,53 @@ public class BulletinBoard {
 	/*
 	 * This method assumes that map is in synch
 	 */
-	private synchronized String toString(boolean detailed) {
+	private String toString(boolean detailed) {
 		StringBuilder builder = new StringBuilder();
 		// TODO: Check if returns an increasing order iterator or not.
-		Iterator<Integer> it = map.descendingKeySet().descendingIterator();
-		while (it.hasNext()) {
-			BulletinBoardEntry boardEntry = map.get(it.next());
-			Article article = boardEntry.getArticle();
-			if (article.getParentId() == 0) {
-				// TODO: create a copy of the object before passing here
-				appendToString(this, article.getId(), builder, detailed);
+		readL.lock();
+		try {
+			Iterator<Integer> it = map.descendingKeySet().descendingIterator();
+			while (it.hasNext()) {
+				BulletinBoardEntry boardEntry = map.get(it.next());
+				Article article = boardEntry.getArticle();
+				if (article.getParentId() == 0) {
+					// TODO: create a copy of the object before passing here
+					appendToString(article.getId(), builder, detailed);
+				}
 			}
+			return builder.toString();
+		} finally {
+			readL.unlock();
 		}
-		return builder.toString();
 	}
 
-	private static void appendToString(BulletinBoard board, Integer id,
-			StringBuilder builder, boolean detailed) {
-		builder.append("{");
-		BulletinBoardEntry entry = board.map.get(id);
-		if (detailed) {
-			builder.append(entry.getArticle().toString());
-		} else {
-			builder.append(entry.getArticle().toShortString());
+	private void appendToString(Integer id, StringBuilder builder,
+			boolean detailed) {
+		readL.lock();
+		try {
+			builder.append("{");
+			BulletinBoardEntry entry = map.get(id);
+			if (detailed) {
+				builder.append(entry.getArticle().toString());
+			} else {
+				builder.append(entry.getArticle().toShortString());
+			}
+			for (Integer replyId : entry.getReplyIdList()) {
+				appendToString(replyId, builder, detailed);
+			}
+			builder.append("}");
+		} finally {
+			readL.unlock();
 		}
-		for (Integer replyId : entry.getReplyIdList()) {
-			appendToString(board, replyId, builder, detailed);
+	}
+
+	public void replaceBB(BulletinBoard bbNew) {
+		writeL.lock();
+		try {
+			this.map = bbNew.map;
+		} finally {
+			writeL.unlock();
 		}
-		builder.append("}");
 	}
 
 	public static BulletinBoard parseBulletinBoard(String boardStr) {
@@ -142,27 +226,86 @@ public class BulletinBoard {
 		return boardStr.substring(1);
 	}
 
+	public static BulletinBoard mergeBB(BulletinBoard bbToMergeIn,
+			BulletinBoard bbTwo) {
+		assert(false);
+		
+		if (bbToMergeIn == null) {
+			bbToMergeIn = bbTwo;
+		} else {
+			// if merge has some value and non null, we need to everything from
+			// two to One
+			if (bbTwo != null) {
+				// TODO cannot simply putAll as we need to modify the reply list
+				// in the Article
+				Collection<BulletinBoardEntry> entries = bbTwo.map.values();
+				for (BulletinBoardEntry entry : entries) {
+					//TODO verify that entry cannot be null with dhiman in parsing logic
+					BulletinBoardEntry boardEntry = bbToMergeIn.map.get(entry
+							.getArticle().getId());
+					if (boardEntry == null) {
+						// need to add, this is latest
+						if (entry.getArticle().isRoot()) {
+							bbToMergeIn.addArticle(entry.getArticle());
+						}else{
+							bbToMergeIn.addArticleReply(entry.getArticle()); 
+						}
+					} else {
+						// merge
+						// two cases, one Article is empty but the replyList contains data.
+						// Article List is not empty
+						if (boardEntry.getArticle() == null){
+							bbToMergeIn.addArticle(entry.getArticle()); // no worse than current
+						}
+						if (entry.getReplyIdList() != null) {
+							//merge reply list
+							boardEntry.getReplyIdList().addAll(
+									entry.getReplyIdList());
+						}
+						
+					}
+				}
+			}
+		}
+
+		return bbToMergeIn;
+	}
+
 	private class BulletinBoardEntry {
 		private Article article;
-		private List<Integer> replyList;
+		private Set<Integer> replyList;
 
 		BulletinBoardEntry(Article article) {
 			this.article = article;
 		}
 
 		Article getArticle() {
-			return article;
+			return new Article(article);
 		}
 
-		List<Integer> getReplyIdList() {
-			return replyList;
+		Set<Integer> getReplyIdList() {
+			Set<Integer> newReplyList = new HashSet<Integer>();
+			newReplyList.addAll(replyList);
+			return newReplyList;
 		}
 
 		void addReplyId(int id) {
 			if (replyList == null) {
-				replyList = new ArrayList<Integer>();
+				replyList = new HashSet<Integer>();
 			}
 			replyList.add(id);
 		}
+	}
+
+	public void mergeWithMe(BulletinBoard mergedBulletinBoard) {
+		writeL.lock();
+		try {
+			// TODO cannot simply putAll as we need to modify the reply list in
+			// the Article
+			// for(Map.Entry<Integer, Article>)
+		} finally {
+			writeL.unlock();
+		}
+
 	}
 }

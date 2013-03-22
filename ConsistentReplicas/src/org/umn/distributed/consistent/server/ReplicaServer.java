@@ -14,10 +14,10 @@ public abstract class ReplicaServer extends AbstractServer {
 	private static final String START_ELECTION_COMMAND = "STRTELEC";
 	private static final String END_ELECTION_COMMAND = "ENDELEC";
 
-	private boolean coordinator = false;
-	private Machine coordinatorMachine;
-	private TCPServer externalTcpServer;
-	private Coordinator coordinatorServer;
+	protected boolean coordinator = false;
+	protected Machine coordinatorMachine;
+	protected TCPServer externalTcpServer;
+	protected Coordinator coordinatorServer;
 	// Need to access bb using syncronized methods
 	protected BulletinBoard bb = new BulletinBoard();
 

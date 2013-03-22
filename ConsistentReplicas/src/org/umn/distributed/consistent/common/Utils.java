@@ -126,6 +126,10 @@ public class Utils {
 		}
 		return null;
 	}
+	
+	public static byte[] stringToByte(String str) {
+		return stringToByte(str, Props.ENCODING);
+	}
 
 	public static String byteToString(byte[] data, String encoding) {
 		try {

@@ -1,19 +1,35 @@
 package org.umn.distributed.consistent.common;
 
-
 public class Machine {
 	private int id;
 	private String IP;
 	private int port;
+	private int extPort;
+
+	public Machine(int id, String iP, int port, int extPort) {
+		this.id = id;
+		this.IP = iP;
+		this.port = port;
+		this.extPort = extPort;
+	}
 
 	public Machine(String iP, int port) {
-		super();
-		IP = iP;
-		this.port = port;
+		this(0, iP, port, 0);
+	}
+
+	public Machine(String iP, int port, int extPort) {
+		this(0, iP, port, extPort);
 	}
 
 	public Machine(int id, String iP, int port) {
-		this(iP, port);
+		this(id, iP, port, 0);
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setid(int id) {
 		this.id = id;
 	}
 
@@ -23,6 +39,18 @@ public class Machine {
 
 	public int getPort() {
 		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public int getExternalPort() {
+		return extPort;
+	}
+
+	public void setExternalPort(int extPort) {
+		this.extPort = extPort;
 	}
 
 	@Override

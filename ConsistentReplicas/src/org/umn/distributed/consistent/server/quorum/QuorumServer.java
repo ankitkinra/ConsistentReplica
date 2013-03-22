@@ -16,13 +16,13 @@ import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
+import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class QuorumServer extends ReplicaServer {
 	private static final byte[] READ_LIST_COMMAND = null;
 	private static final int NETWORK_TIMEOUT = 100;
 
-	public QuorumServer(String coordinatorIP,
-			int coordinatorPort) {
+	public QuorumServer(String coordinatorIP, int coordinatorPort) {
 		super(STRATEGY.QUORUM, coordinatorIP, coordinatorPort);
 		validateParameters();
 	}
@@ -322,9 +322,10 @@ public class QuorumServer extends ReplicaServer {
 		public void run() {
 			// TODO Auto-generated method stub
 			try {
-				String command = WRITE_COMMAND + "-" + articleToWrite.toString();
-				dataRead = TCPClient.sendData(this.serverToWrite, Utils
-						.stringToByte(command, Props.ENCODING));
+				String command = WRITE_COMMAND + "-"
+						+ articleToWrite.toString();
+				dataRead = TCPClient.sendData(this.serverToWrite,
+						Utils.stringToByte(command, Props.ENCODING));
 			} catch (IOException e) {
 				logger.error("WriteServiceError", e);
 			}
@@ -337,5 +338,10 @@ public class QuorumServer extends ReplicaServer {
 	@Override
 	public byte[] handleSpecificRequest(String request) {
 		return null;
+	}
+
+	@Override
+	protected Coordinator createCoordinator() {
+		return new QuorumCoordinator();
 	}
 }

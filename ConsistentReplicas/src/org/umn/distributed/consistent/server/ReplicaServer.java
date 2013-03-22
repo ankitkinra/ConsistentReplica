@@ -5,61 +5,98 @@ import java.io.IOException;
 import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
+import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
+import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public abstract class ReplicaServer extends AbstractServer {
 
-	protected static final String WRITE_COMMAND = "WRITE";
-	protected static final String READ_COMMAND = "READ";
-	protected static final String READITEM_COMMAND = "RDITEM";
-	protected static final String INVALID_COMMAND = "INVCOM";
-	
-	private static final String HEARTBEAT_COMMAND = "PING";
 	private static final String START_ELECTION_COMMAND = "STRTELEC";
 	private static final String END_ELECTION_COMMAND = "ENDELEC";
-	protected static final String COMMAND_SUCCESS = "SUCCESS";
-	protected static final String COMMAND_FAILED = "FAILED";
-	
-	
-	private boolean coordinator;
+
+	private boolean coordinator = false;
 	private Machine coordinatorMachine;
 	private TCPServer externalTcpServer;
-	private int externalPort;
-	//Need to access bb using syncronized methods
+	private Coordinator coordinatorServer;
+	// Need to access bb using syncronized methods
 	protected BulletinBoard bb = new BulletinBoard();
 
 	protected ReplicaServer(STRATEGY strategy, String coordinatorIP,
 			int coordinatorPort) {
-		super(strategy, Props.SERVER_INTERNAL_PORT, Props.INTERNAL_SERVER_THREADS);
+		super(strategy, Props.SERVER_INTERNAL_PORT,
+				Props.INTERNAL_SERVER_THREADS);
 		this.externalTcpServer = new TCPServer(this,
 				Props.EXTERNAL_SERVER_THREADS);
 		this.strategy = strategy;
+		// TODO: set id
+		this.coordinatorMachine = new Machine(coordinatorIP, coordinatorPort);
 	}
 
-	@Override
-	public void start() throws Exception {
+	protected ReplicaServer(STRATEGY strategy, boolean coordinator) {
+		this(strategy, Utils.getLocalServerIp(), Props.COORDINATOR_PORT);
+		this.coordinator = true;
+	}
+
+	protected void startCoordinator() throws Exception {
+		logger.debug("Starting coordinator");
 		try {
-			super.start();
-			preRegister();
-			register();
-			postRegister();
-		}
-		catch (Exception e) {
-			stop();
+			this.coordinatorServer = createCoordinator();
+			this.coordinatorServer.start();
+			int port = coordinatorServer.getInternalPort();
+			this.coordinatorMachine.setPort(port);
+			logger.debug("Coordinator started");
+		} catch (Exception e) {
+			logger.error("Unable to start coordinator", e);
+			this.coordinatorServer.stop();
 			throw e;
 		}
 	}
 
-	protected void preRegister() {
+	protected abstract Coordinator createCoordinator();
 
+	protected String createRegisterMessage() {
+		StringBuilder builder = new StringBuilder();
+		builder.append(REGISTER_COMMAND).append(COMMAND_PARAM_SEPARATOR);
+		builder.append(myInfo.getId()).append(COMMAND_PARAM_SEPARATOR);
+		builder.append(myInfo.getIP()).append(COMMAND_PARAM_SEPARATOR);
+		builder.append(myInfo.getPort()).append(COMMAND_PARAM_SEPARATOR);
+		builder.append(myInfo.getExternalPort());
+		return builder.toString();
 	}
 
-	protected void register() {
-		// this.coordinatorMachine = new Machine(id, iP, coordinatorPort);
+	@Override
+	public void startSpecific() throws Exception {
+		try {
+			preRegister();
+			register();
+			postRegister();
+		} catch (Exception e) {
+			// TODO: fix it
+			// stop();
+			throw e;
+		}
 	}
 
-	protected void postRegister() throws IOException{
-		this.externalPort = this.externalTcpServer.startListening(this.externalPort);
+	protected void preRegister() throws Exception {
+		if (this.coordinator) {
+			startCoordinator();
+		}
+		int port = this.externalTcpServer
+				.startListening(Props.SERVER_EXTERNAL_PORT);
+		this.myInfo.setExternalPort(port);
+	}
+
+	protected void register() throws Exception {
+		String registerMessage = createRegisterMessage();
+		byte resp[] = TCPClient.sendData(coordinatorMachine,
+				Utils.stringToByte(registerMessage, Props.ENCODING));
+		String respStr = Utils.byteToString(resp, Props.ENCODING);
+		if (!respStr.startsWith(COMMAND_SUCCESS)) {
+			throw new Exception("Coordinator rejected to register the replica");
+		}
+	}
+
+	protected void postRegister() throws IOException {
 	}
 
 	protected void shutdown() {
@@ -117,22 +154,21 @@ public abstract class ReplicaServer extends AbstractServer {
 	 * (Primary, coordinator, normal server)
 	 */
 	public abstract String write(String message);
-	
-	public byte[] handleRequest(byte[] request){
+
+	public byte[] handleRequest(byte[] request) {
 		String req = Utils.byteToString(request, Props.ENCODING);
-		if(req.startsWith(HEARTBEAT_COMMAND)) {
+		if (req.startsWith(HEARTBEAT_COMMAND)) {
 			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
-		}
-		else if(req.startsWith(START_ELECTION_COMMAND)) {
-			//TODO: handle election. SHould block all writes;
+		} else if (req.startsWith(START_ELECTION_COMMAND)) {
+			// TODO: handle election. SHould block all writes;
 			return null;
-		}
-		else if(req.startsWith(END_ELECTION_COMMAND)) {
-			//TODO: handle election ends. start new coordinator and start acceptign reqs after coordinator
+		} else if (req.startsWith(END_ELECTION_COMMAND)) {
+			// TODO: handle election ends. start new coordinator and start
+			// acceptign reqs after coordinator
 			return null;
 		}
 		return handleSpecificRequest("");
 	}
-	
+
 	public abstract byte[] handleSpecificRequest(String request);
 }

@@ -9,10 +9,10 @@ import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
+import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class SequentialServer extends ReplicaServer {
-	public SequentialServer(String coordinatorIP,
-			int coordinatorPort) {
+	public SequentialServer(String coordinatorIP, int coordinatorPort) {
 		super(STRATEGY.SEQUENTIAL, coordinatorIP, coordinatorPort);
 	}
 
@@ -37,13 +37,12 @@ public class SequentialServer extends ReplicaServer {
 		String req[] = message.split("-");
 		Article article = Article.parseArticle(req[1]);
 		boolean result = false;
-		if(article.isRoot()) {
+		if (article.isRoot()) {
 			result = this.bb.addArticle(article);
-		}
-		else {
+		} else {
 			result = this.bb.addArticleReply(article);
 		}
-		if(result) {
+		if (result) {
 			return COMMAND_SUCCESS;
 		}
 		return COMMAND_FAILED + "-" + "FAILED WRITING THE ARTICLE";
@@ -51,14 +50,14 @@ public class SequentialServer extends ReplicaServer {
 
 	@Override
 	public byte[] handleSpecificRequest(String request) {
-		if(request.startsWith(WRITE_COMMAND)) {
-			return Utils.stringToByte(write(request.substring((WRITE_COMMAND + "-").length())), Props.ENCODING);
-		}
-		else if(request.startsWith(READ_COMMAND)) {
-			
-		}
-		else if(request.startsWith(READITEM_COMMAND)) {
-			
+		if (request.startsWith(WRITE_COMMAND)) {
+			return Utils.stringToByte(
+					write(request.substring((WRITE_COMMAND + "-").length())),
+					Props.ENCODING);
+		} else if (request.startsWith(READ_COMMAND)) {
+
+		} else if (request.startsWith(READITEM_COMMAND)) {
+
 		}
 		return Utils.stringToByte(INVALID_COMMAND, Props.ENCODING);
 	}
@@ -79,9 +78,10 @@ public class SequentialServer extends ReplicaServer {
 		@Override
 		public void run() {
 			try {
-				String command = WRITE_COMMAND + "-" + articleToWrite.toString();
-				dataRead = TCPClient.sendData(this.serverToWrite, Utils
-						.stringToByte(command, Props.ENCODING));
+				String command = WRITE_COMMAND + "-"
+						+ articleToWrite.toString();
+				dataRead = TCPClient.sendData(this.serverToWrite,
+						Utils.stringToByte(command, Props.ENCODING));
 			} catch (IOException e) {
 				logger.error("Cannot write to " + serverToWrite.toString(), e);
 			}
@@ -89,5 +89,10 @@ public class SequentialServer extends ReplicaServer {
 					dataRead, serverToWrite));
 			latchToDecrement.countDown();
 		}
+	}
+
+	@Override
+	protected Coordinator createCoordinator() {
+		return new SequentialCoordinator();
 	}
 }

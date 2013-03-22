@@ -1,7 +1,6 @@
 package org.umn.distributed.consistent.server.quorum;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,10 +9,10 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.Logger;
 import org.umn.distributed.consistent.common.Article;
 import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
+import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
@@ -21,14 +20,10 @@ import org.umn.distributed.consistent.server.ReplicaServer;
 public class QuorumServer extends ReplicaServer {
 	private static final byte[] READ_LIST_COMMAND = null;
 	private static final int NETWORK_TIMEOUT = 100;
-	private Logger logger = Logger.getLogger(this.getClass());
-	private static String WRITE_COMMAND = "%%ARTICLE%%";
-	private static final String ENCODING = "UTF8";
-	private static final String WRITE_SUCCESS = "SUCCESS";
 
-	public QuorumServer(STRATEGY strategy, String coordinatorIP,
+	public QuorumServer(String coordinatorIP,
 			int coordinatorPort) {
-		super(strategy, coordinatorIP, coordinatorPort);
+		super(STRATEGY.QUORUM, coordinatorIP, coordinatorPort);
 		validateParameters();
 	}
 
@@ -36,11 +31,10 @@ public class QuorumServer extends ReplicaServer {
 
 	}
 
-	
 	public String write(String message) {
 		// this is local write for me
 		Article a = Article.parseArticle(message);
-		if(a != null){
+		if (a != null) {
 			this.bb.addArticle(a);
 		}
 		return null;
@@ -90,24 +84,22 @@ public class QuorumServer extends ReplicaServer {
 				writeQuorumlatch.await(NETWORK_TIMEOUT, TimeUnit.SECONDS);
 				for (WriteService wr : threadsToWrite) {
 					String str = null;
-					try {
-						str = Utils.convertByteToString(wr.dataRead,
-								wr.dataRead.length, 0, "UTF8");
-						if (str.equals(WRITE_SUCCESS)) {
-							writeStatus.put(wr.serverToWrite, true);
-						} else {
-							// basically failed
-							wr.dataRead = null;
-						}
-
-					} catch (UnsupportedEncodingException e) {
-						logger.error("str null due to encoding exception", e);
+					// try {
+					str = Utils.byteToString(wr.dataRead, Props.ENCODING);
+					if (str.equals(COMMAND_SUCCESS)) {
+						writeStatus.put(wr.serverToWrite, true);
+					} else {
+						// basically failed
 						wr.dataRead = null;
-						// this will not allow this server to be removed from
-						// the failedservers
-
 					}
-
+					// } catch (UnsupportedEncodingException e) {
+					// logger.error("str null due to encoding exception", e);
+					// wr.dataRead = null;
+					// // this will not allow this server to be removed from
+					// // the failedservers
+					//
+					// }
+					//
 				}
 			} catch (InterruptedException ie) {
 				logger.error("Error", ie);
@@ -212,17 +204,16 @@ public class QuorumServer extends ReplicaServer {
 				// TODO add a timeout and then fail the operation
 				for (ReadService rs : threadsToRead) {
 					String str = null;
-					try {
-						str = Utils.convertByteToString(rs.dataRead,
-								rs.dataRead.length, 0, "UTF8");
-						responseMap.put(rs.serverToRead, str);
-					} catch (UnsupportedEncodingException e) {
-						logger.error("str null due to encoding exception", e);
-						rs.dataRead = null;
-						// this will not allow this server to be removed from
-						// the failedservers
-
-					}
+					// try {
+					str = Utils.byteToString(rs.dataRead, Props.ENCODING);
+					responseMap.put(rs.serverToRead, str);
+					// } catch (UnsupportedEncodingException e) {
+					// logger.error("str null due to encoding exception", e);
+					// rs.dataRead = null;
+					// // this will not allow this server to be removed from
+					// // the failedservers
+					//
+					// }
 
 				}
 			} catch (InterruptedException ie) {
@@ -304,7 +295,7 @@ public class QuorumServer extends ReplicaServer {
 				dataRead = TCPClient.sendData(this.serverToRead,
 						READ_LIST_COMMAND);
 			} catch (IOException e) {
-				logger.error("ReadServiceError",e);
+				logger.error("ReadServiceError", e);
 			}
 			logger.info(String.format("dataRead =%s from server = %s",
 					dataRead, serverToRead));
@@ -331,19 +322,16 @@ public class QuorumServer extends ReplicaServer {
 		public void run() {
 			// TODO Auto-generated method stub
 			try {
-				dataRead = TCPClient.sendData(
-						this.serverToWrite,
-						Utils.stringToByte(
-								WRITE_COMMAND.replaceAll("%%ARTICLE%%",
-										articleToWrite.toString()), ENCODING));
+				String command = WRITE_COMMAND + "-" + articleToWrite.toString();
+				dataRead = TCPClient.sendData(this.serverToWrite, Utils
+						.stringToByte(command, Props.ENCODING));
 			} catch (IOException e) {
-				logger.error("WriteServiceError",e);
+				logger.error("WriteServiceError", e);
 			}
 			logger.info(String.format("dataRead =%s from server = %s",
 					dataRead, serverToWrite));
 			latchToDecrement.countDown();
 		}
-
 	}
 
 	@Override

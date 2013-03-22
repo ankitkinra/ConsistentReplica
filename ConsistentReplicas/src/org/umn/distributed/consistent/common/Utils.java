@@ -2,7 +2,6 @@ package org.umn.distributed.consistent.common;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -29,10 +28,10 @@ public class Utils {
 		}
 		return true;
 	}
-	
+
 	public static int findFreePort(int startNumber) {
-		while(!isPortAvailable(startNumber)) {
-			if(!isValidPort(startNumber)) {
+		while (!isPortAvailable(startNumber)) {
+			if (!isValidPort(startNumber)) {
 				return -1;
 			}
 			startNumber++;
@@ -106,31 +105,34 @@ public class Utils {
 		return null;
 	}
 
-	public static String getDataFromPacket(DatagramPacket packet,
-			String encoding) {
-		try {
-			return new String(packet.getData(), packet.getOffset(),
-					packet.getLength(), encoding);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-			logger.error("invalid encoding type: " + encoding);
-		}
-		return null;
-	}
+	//
+	// public static String getDataFromPacket(DatagramPacket packet,
+	// String encoding) {
+	// try {
+	// return new String(packet.getData(), packet.getOffset(),
+	// packet.getLength(), encoding);
+	// } catch (UnsupportedEncodingException e) {
+	// e.printStackTrace();
+	// logger.error("invalid encoding type: " + encoding);
+	// }
+	// return null;
+	// }
 
 	public static byte[] stringToByte(String str, String encoding) {
 		try {
 			return str.getBytes(encoding);
 		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-			logger.error("invalid encoding type: " + encoding);
+			logger.error("invalid encoding type: " + encoding, e);
 		}
 		return null;
 	}
-	
-	
-	public static String convertByteToString(byte[] data, int offset,
-			int length, String encoding) throws UnsupportedEncodingException {
-		return new String(data, offset, length, encoding);
+
+	public static String byteToString(byte[] data, String encoding) {
+		try {
+			return new String(data, encoding);
+		} catch (UnsupportedEncodingException e) {
+			logger.error("invalid encoding type: " + encoding, e);
+		}
+		return null;
 	}
 }

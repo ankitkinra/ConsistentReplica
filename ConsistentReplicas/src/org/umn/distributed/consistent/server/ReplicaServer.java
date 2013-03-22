@@ -5,15 +5,24 @@ import java.io.IOException;
 import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
+import org.umn.distributed.consistent.common.Utils;
 
 public abstract class ReplicaServer extends AbstractServer {
-	public enum STRATEGY {
-		SEQUENTIAL, QUORUM,
-	}
 
+	protected static final String WRITE_COMMAND = "WRITE";
+	protected static final String READ_COMMAND = "READ";
+	protected static final String READITEM_COMMAND = "RDITEM";
+	protected static final String INVALID_COMMAND = "INVCOM";
+	
+	private static final String HEARTBEAT_COMMAND = "PING";
+	private static final String START_ELECTION_COMMAND = "STRTELEC";
+	private static final String END_ELECTION_COMMAND = "ENDELEC";
+	protected static final String COMMAND_SUCCESS = "SUCCESS";
+	protected static final String COMMAND_FAILED = "FAILED";
+	
+	
 	private boolean coordinator;
 	private Machine coordinatorMachine;
-	private STRATEGY strategy;
 	private TCPServer externalTcpServer;
 	private int externalPort;
 	//Need to access bb using syncronized methods
@@ -21,7 +30,7 @@ public abstract class ReplicaServer extends AbstractServer {
 
 	protected ReplicaServer(STRATEGY strategy, String coordinatorIP,
 			int coordinatorPort) {
-		super(Props.SERVER_INTERNAL_PORT, Props.INTERNAL_SERVER_THREADS);
+		super(strategy, Props.SERVER_INTERNAL_PORT, Props.INTERNAL_SERVER_THREADS);
 		this.externalTcpServer = new TCPServer(this,
 				Props.EXTERNAL_SERVER_THREADS);
 		this.strategy = strategy;
@@ -107,17 +116,22 @@ public abstract class ReplicaServer extends AbstractServer {
 	 * Actually writes the content. Implementation depends on the type of server
 	 * (Primary, coordinator, normal server)
 	 */
-	public String write(String message) {
-		return null;
-	}
+	public abstract String write(String message);
 	
 	public byte[] handleRequest(byte[] request){
-		//TODO handle and if not handled
-		boolean notHandled = true;
-		if(notHandled){
-			return handleSpecificRequest("");
+		String req = Utils.byteToString(request, Props.ENCODING);
+		if(req.startsWith(HEARTBEAT_COMMAND)) {
+			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
 		}
-		return null;
+		else if(req.startsWith(START_ELECTION_COMMAND)) {
+			//TODO: handle election. SHould block all writes;
+			return null;
+		}
+		else if(req.startsWith(END_ELECTION_COMMAND)) {
+			//TODO: handle election ends. start new coordinator and start acceptign reqs after coordinator
+			return null;
+		}
+		return handleSpecificRequest("");
 	}
 	
 	public abstract byte[] handleSpecificRequest(String request);

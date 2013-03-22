@@ -8,16 +8,22 @@ import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Utils;
 
 public abstract class AbstractServer implements TcpServerDelegate{
-	private Logger logger = Logger.getLogger(this.getClass());
+	protected Logger logger = Logger.getLogger(this.getClass());
 
+	public enum STRATEGY {
+		SEQUENTIAL, QUORUM,
+	}
+	
 	private TCPServer tcpServer;
 	protected int port;
 	protected Machine myInfo;
-	
+	protected STRATEGY strategy;
+
 	// TODO think if we can change this to list sorted in increasing order
 	private TreeMap<Integer, Machine> knownClients = new TreeMap<Integer, Machine>();
 
-	protected AbstractServer(int port, int numTreads) {
+	protected AbstractServer(STRATEGY strategy, int port, int numTreads) {
+		this.strategy = strategy;
 		this.port = port;
 		this.tcpServer = new TCPServer(this, numTreads);
 	}

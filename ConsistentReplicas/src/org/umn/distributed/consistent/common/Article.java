@@ -34,6 +34,10 @@ public class Article {
 		this.parentId = parentId;
 	}
 	
+	public boolean isRoot() {
+		return this.parentId == 0;
+	}
+	
 	public String getTitle() {
 		return title;
 	}

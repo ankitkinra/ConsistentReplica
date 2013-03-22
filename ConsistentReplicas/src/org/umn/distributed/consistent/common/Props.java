@@ -6,10 +6,14 @@ import java.util.Properties;
 
 public class Props {
 	public static String ENCODING;
+	
 	public static int SERVER_EXTERNAL_PORT;
+	public static int EXTERNAL_SERVER_THREADS;
+
 	public static int SERVER_INTERNAL_PORT;
 	public static int INTERNAL_SERVER_THREADS;
-	public static int EXTERNAL_SERVER_THREADS;
+	
+	public static int COORDINATOR_PORT;
 	public static int COORDINATOR_SERVER_THREADS; 
 	
 	public static void loadProperties() {
@@ -19,10 +23,13 @@ public class Props {
 			ENCODING = prop.getProperty("encoding");
 			//TODO: validate the port numbers before using
 			SERVER_EXTERNAL_PORT = Integer.parseInt(prop.getProperty("serverExternalPort"));
+			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty("externalServerThreads"));
+
 			SERVER_INTERNAL_PORT = Integer.parseInt(prop.getProperty("serverInternalPort"));
 			INTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty("internalServerThreads"));
-			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty("externalServerThreads"));
+			
 			COORDINATOR_SERVER_THREADS = Integer.parseInt(prop.getProperty("coordinatorServerThreads"));
+			COORDINATOR_PORT = Integer.parseInt(prop.getProperty("coordinatorPort"));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

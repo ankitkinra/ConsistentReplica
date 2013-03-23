@@ -3,7 +3,6 @@ package org.umn.distributed.consistent.server.sequential;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +14,6 @@ import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
-import org.umn.distributed.consistent.server.quorum.QuorumServer.WriteService;
 
 public class SequentialServer extends ReplicaServer {
 	public SequentialServer(boolean isCoordinator, String coordinatorIP,
@@ -23,7 +21,7 @@ public class SequentialServer extends ReplicaServer {
 		super(STRATEGY.SEQUENTIAL, isCoordinator, coordinatorIP,
 				coordinatorPort);
 	}
-
+	
 	@Override
 	public String post(String req) {
 		String command = INTERNAL_WRITE_COMMAND + "-" + req.toString();
@@ -63,9 +61,10 @@ public class SequentialServer extends ReplicaServer {
 	public String write(String req) {
 		Article article = Article.parseArticle(req);
 		boolean result = false;
-		
-		if(this.coordinator) {
-			writeToReplicas(article);
+
+		if (this.coordinator) {
+			HashMap<Machine, Boolean> writeStatus = new HashMap<Machine, Boolean>();
+			writeToReplicas(writeStatus, getMachineList(), article);
 		}
 		if (article.isRoot()) {
 			result = this.bb.addArticle(article);
@@ -78,24 +77,16 @@ public class SequentialServer extends ReplicaServer {
 		return COMMAND_FAILED + "-" + "Failed writing the article";
 	}
 
-	private boolean writeToReplicas(Article article) {
-		HashMap<Machine, Boolean> writeStatus,
-		HashSet<Machine> successfulServers, HashSet<Machine> failedServers,
-		Article aToWrite) {
-	/**
-	 * to execute a write on the group of servers we again need to start a
-	 * countDownlatch with writer service
-	 */
-
+	private boolean writeToReplicas(HashMap<Machine, Boolean> writeStatus, List<Machine> failedServers, Article aToWrite) {
 	if (failedServers != null) {
 		List<WriteService> threadsToWrite = new ArrayList<WriteService>(
 				failedServers.size());
-		final CountDownLatch writeQuorumlatch = new CountDownLatch(
+		final CountDownLatch writelatch = new CountDownLatch(
 				failedServers.size());
 
 		for (Machine server : failedServers) {
 			WriteService t = new WriteService(server, aToWrite,
-					writeQuorumlatch);
+					writelatch);
 			threadsToWrite.add(t);
 			t.start();
 		}
@@ -135,7 +126,7 @@ public class SequentialServer extends ReplicaServer {
 		}
 
 	}
-	
+
 	@Override
 	public byte[] handleSpecificRequest(String request) {
 		if (request.startsWith(INTERNAL_WRITE_COMMAND)) {
@@ -164,16 +155,16 @@ public class SequentialServer extends ReplicaServer {
 	protected Coordinator createCoordinator() {
 		return new SequentialCoordinator();
 	}
-	
+
 	private class WriteService extends Thread {
 		Machine serverToWrite;
 		Article articleToWrite = null;
 		CountDownLatch latchToDecrement;
 		byte[] dataRead;
 
-		WriteService(Machine serverToRead, Article aToWrite,
+		WriteService(Machine serverToWrite, Article aToWrite,
 				CountDownLatch latchToDecrement) {
-			this.serverToWrite = serverToRead;
+			this.serverToWrite = serverToWrite;
 			this.latchToDecrement = latchToDecrement;
 			this.articleToWrite = aToWrite;
 		}

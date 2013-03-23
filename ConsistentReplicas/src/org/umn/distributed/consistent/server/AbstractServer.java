@@ -1,7 +1,13 @@
 package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.log4j.Logger;
 import org.umn.distributed.consistent.common.Machine;
@@ -27,7 +33,10 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected Machine myInfo;
 	protected STRATEGY strategy;
 	// TODO think if we can change this to list sorted in increasing order
-	protected ConcurrentSkipListMap<Integer, Machine> knownClients = new ConcurrentSkipListMap<Integer, Machine>();
+	private TreeMap<Integer, Machine> knownClients = new TreeMap<Integer, Machine>();
+	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
+	private final Lock readL = rwl.readLock();
+	private final Lock writeL = rwl.writeLock();
 
 	protected AbstractServer(STRATEGY strategy, int port, int numTreads) {
 		this.strategy = strategy;
@@ -51,6 +60,55 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	}
 
 	public abstract void startSpecific() throws Exception;
+
+	protected Machine addMachine(Machine machine) {
+		writeL.lock();
+		try {
+			return this.knownClients.put(machine.getId(), machine);
+		} finally {
+			writeL.unlock();
+		}
+	}
+
+	protected Machine removeMachine(int id) {
+		writeL.lock();
+		try {
+			return this.knownClients.remove(id);
+		} finally {
+			writeL.unlock();
+		}
+	}
+
+	protected List<Machine> getMachineList() {
+		readL.lock();
+		try {
+			return getTailList(this.knownClients.lastKey());
+		}
+		finally {
+			readL.unlock();
+		}
+	}
+	
+	protected List<Machine> getTailList(int id) {
+		List<Machine> list = new ArrayList<Machine>();
+		readL.lock();
+		try {
+			SortedMap<Integer, Machine> tailMap = this.knownClients.tailMap(id);
+			Iterator<Integer> it = tailMap.keySet().iterator();
+			while (it.hasNext()) {
+				Integer key = it.next();
+				list.add(tailMap.get(key));
+			}
+		} catch (IllegalArgumentException iae) {
+			logger.error(
+					"Id :" + id + " outside its range: "
+							+ this.knownClients.firstKey() + "-"
+							+ this.knownClients.lastKey(), iae);
+		} finally {
+			readL.unlock();
+		}
+		return list;
+	}
 
 	public int getInternalPort() {
 		return this.port;

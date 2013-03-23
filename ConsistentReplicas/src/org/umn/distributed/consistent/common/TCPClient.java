@@ -21,12 +21,16 @@ public class TCPClient {
 			clientSocket = new Socket(remoteMachine.getIP(),
 					remoteMachine.getPort());
 			clientSocket.getOutputStream().write(data);
-			clientSocket.
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			is = clientSocket.getInputStream();
-			while (is.available() > 0 && (count = is.read(buffer)) > -1) {
+			
+			while((count = is.read(buffer)) > -1) {
 				bos.write(buffer, 0, count);
 			}
+//			is = clientSocket.getInputStream();
+//			while (is.available() > 0 && (count = is.read(buffer)) > -1) {
+//				bos.write(buffer, 0, count);
+//			}
 			bos.flush();
 			is.close();
 			buffer = bos.toByteArray();

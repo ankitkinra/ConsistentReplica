@@ -21,7 +21,6 @@ import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFo
 
 public class QuorumServer extends ReplicaServer {
 	private static final String READ_LIST_COMMAND = "GET_BB|FROM_ID=%%ARTICLE_ID%%";
-	private static final int NETWORK_TIMEOUT = 100;
 	private Integer lastSyncedId;
 
 	public QuorumServer(boolean isCoordinator, String coordinatorIP,
@@ -126,7 +125,7 @@ public class QuorumServer extends ReplicaServer {
 				t.start();
 			}
 			try {
-				writeQuorumlatch.await(NETWORK_TIMEOUT, TimeUnit.SECONDS);
+				writeQuorumlatch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 				for (WriteService wr : threadsToWrite) {
 					String str = null;
 					// try {
@@ -177,7 +176,7 @@ public class QuorumServer extends ReplicaServer {
 	 * of servers to return results.
 	 */
 	@Override
-	public String readItemList() {
+	public String readItemList(String req) {
 
 		HashMap<Machine, String> responseMap = getBBFromReadQuorum();
 
@@ -231,7 +230,7 @@ public class QuorumServer extends ReplicaServer {
 				t.start();
 			}
 			try {
-				readQuorumlatch.await(NETWORK_TIMEOUT, TimeUnit.SECONDS);
+				readQuorumlatch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 				// TODO add a timeout and then fail the operation
 				for (ReadService rs : threadsToRead) {
 					String str = null;

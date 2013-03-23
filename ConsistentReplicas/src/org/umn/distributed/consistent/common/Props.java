@@ -19,6 +19,8 @@ public class Props {
 	public static int HEARTBEAT_INTERVAL;
 	public static int REMOVE_INTERVAL;
 
+	public static int NETWORK_TIMEOUT;
+
 	public static void loadProperties() {
 		Properties prop = new Properties();
 		try {
@@ -45,6 +47,8 @@ public class Props {
 					.getProperty("heartbeatInterval"));
 			REMOVE_INTERVAL = Integer.parseInt(prop
 					.getProperty("deregisterInterval"));
+			NETWORK_TIMEOUT = Integer.parseInt(prop
+					.getProperty("totalNetworkTimeout"));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

@@ -148,23 +148,23 @@ public abstract class ReplicaServer extends AbstractServer {
 	/*
 	 * Post and read details. implementation will vary based on the protocol
 	 */
-	public abstract String post(String message);
+	public abstract String post(String req);
 
 	/*
 	 * Read all the posts with ids
 	 */
-	public abstract String readItemList();
+	public abstract String readItemList(String req);
 
 	/*
 	 * Show details for one post
 	 */
-	public abstract String readItem(String id);
+	public abstract String readItem(String req);
 
 	/*
 	 * Actually writes the content. Implementation depends on the type of server
 	 * (Primary, coordinator, normal server)
 	 */
-	public abstract String write(String message);
+	public abstract String write(String req);
 
 	public byte[] handleRequest(byte[] request) {
 		String req = Utils.byteToString(request, Props.ENCODING);

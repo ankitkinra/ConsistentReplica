@@ -33,9 +33,11 @@ public class BulletinBoard {
 		try {
 			if (!containsArticle(article.getId())) {
 				map.put(article.getId(), new BulletinBoardEntry(article));
-			} else {
-				// TODO update reply list as content/title cannot be changed
 			}
+			/*
+			 * if article is already present, we need to update the reply list
+			 * using the addReply method
+			 */
 		} finally {
 
 			writeL.unlock();
@@ -226,49 +228,115 @@ public class BulletinBoard {
 		return boardStr.substring(1);
 	}
 
+	/**
+	 * No locking consistency here, hence make sure only one thread is accessing
+	 * these bb's
+	 * 
+	 * @param bbToMergeIn
+	 * @param bbTwo
+	 * @return
+	 */
 	public static BulletinBoard mergeBB(BulletinBoard bbToMergeIn,
 			BulletinBoard bbTwo) {
-		assert(false);
-		
+		assert (false);
+
 		if (bbToMergeIn == null) {
 			bbToMergeIn = bbTwo;
 		} else {
-			// if merge has some value and non null, we need to everything from
-			// two to One
 			if (bbTwo != null) {
-				// TODO cannot simply putAll as we need to modify the reply list
-				// in the Article
-				Collection<BulletinBoardEntry> entries = bbTwo.map.values();
-				for (BulletinBoardEntry entry : entries) {
-					//TODO verify that entry cannot be null with dhiman in parsing logic
-					BulletinBoardEntry boardEntry = bbToMergeIn.map.get(entry
-							.getArticle().getId());
-					if (boardEntry == null) {
-						// need to add, this is latest
-						if (entry.getArticle().isRoot()) {
-							bbToMergeIn.addArticle(entry.getArticle());
-						}else{
-							bbToMergeIn.addArticleReply(entry.getArticle()); 
-						}
-					} else {
-						// merge
-						// two cases, one Article is empty but the replyList contains data.
-						// Article List is not empty
-						if (boardEntry.getArticle() == null){
-							bbToMergeIn.addArticle(entry.getArticle()); // no worse than current
-						}
-						if (entry.getReplyIdList() != null) {
-							//merge reply list
-							boardEntry.getReplyIdList().addAll(
-									entry.getReplyIdList());
-						}
-						
-					}
-				}
+				mergeTwoBBs(bbToMergeIn, bbTwo);
 			}
 		}
 
 		return bbToMergeIn;
+	}
+
+	private static void mergeTwoBBs(BulletinBoard bbToMergeIn,
+			BulletinBoard bbTwo) {
+		Collection<BulletinBoardEntry> entries = bbTwo.map.values();
+		for (BulletinBoardEntry entry : entries) {
+			/**
+			 * Logic if the bbToMergeIn does not contain a particular entry from
+			 * bbTwo this means that bbTwo has something extra, and we need to
+			 * add this to bbToMergeIn. z
+			 * 
+			 * <pre>
+			 * If on the other hand if the entry exits, we still might need to update
+			 * the reply list.
+			 * <code>
+			 * bbOne			bbTwo
+			 * 1,A1,0,<2>		1,A1,0,<3>
+			 * 2,A2,1,<>		null
+			 * 3,null,<4>		3,A2,1,<>
+			 * 4,A4,3,<>		4,null,0,<5>
+			 * null				5,A5,4,<>
+			 * 6,null,0,<7>		6,null,0,<8>
+			 * 7,A7,6,<>		null
+			 * null				8,A8,6,<>
+			 * </code>
+			 */
+			BulletinBoardEntry boardEntry = bbToMergeIn.map.get(entry
+					.getArticle().getId());
+			/**
+			 * <pre>
+			 * Case 1:
+			 * As the original entry is null,boardEntry == null, we can have a new parentId, which would mean that
+			 * we need to update an existing entry in the bbToMergeIn
+			 * Case 2: If new entry also does not have any parentID, then we can assume that this 
+			 * is a root level and hence we do not need to disturb any other reply
+			 * Case 3: Article is null in both the entries, but the reply list is different
+			 * But in this case, as we process the list further we will hit the reply which caused
+			 * the reply list to be different and then we will update the parent 
+			 * reply list of the merged entity and hence it will be automatically handled
+			 * </pre>
+			 */
+			if (boardEntry == null) {
+				/*
+				 * If mainBB or bbToMergeIn does not have an entry, then this is
+				 * as latest as we are going to get hence simply add the
+				 * BulletinBoardEntry to the mergeBB
+				 */
+				bbToMergeIn.map.put(entry.getArticle().getId(), entry);
+				// but as this was not here in mergeMap initially,
+				// if it had a parent, then the merge process would have
+				// already merged the reply List
+
+			} else {
+				/**
+				 * merge two cases,
+				 * 
+				 * <pre>
+				 * case 1: Article is null but the replyList contains data.
+				 * case 2: Article is not null, hence no new information to update, but need to merge list
+				 * </pre>
+				 */
+				if (boardEntry.getArticle() == null) {
+					boardEntry.setArticle(entry.getArticle());
+					// a new parent could have come and a new replyList could
+					// have come
+					// need to take care only of the reply list, as parent id
+					// would have been handled already
+				}
+				if (entry.getReplyIdList() != null) {
+					// merge reply list
+					boardEntry.getReplyIdList().addAll(entry.getReplyIdList());
+				}
+
+			}
+		}
+	}
+
+	public void mergeWithMe(BulletinBoard bbToMerge) {
+		writeL.lock();
+		try {
+			if (bbToMerge != null) {
+				// Should work as I have obtained lock on the my own instance
+				mergeTwoBBs(this, bbToMerge);
+			}
+		} finally {
+			writeL.unlock();
+		}
+
 	}
 
 	private class BulletinBoardEntry {
@@ -283,13 +351,17 @@ public class BulletinBoard {
 			return new Article(article);
 		}
 
-		Set<Integer> getReplyIdList() {
+		private void setArticle(Article a) {
+			this.article = a;
+		}
+
+		private Set<Integer> getReplyIdList() {
 			Set<Integer> newReplyList = new HashSet<Integer>();
 			newReplyList.addAll(replyList);
 			return newReplyList;
 		}
 
-		void addReplyId(int id) {
+		private void addReplyId(int id) {
 			if (replyList == null) {
 				replyList = new HashSet<Integer>();
 			}
@@ -297,15 +369,4 @@ public class BulletinBoard {
 		}
 	}
 
-	public void mergeWithMe(BulletinBoard mergedBulletinBoard) {
-		writeL.lock();
-		try {
-			// TODO cannot simply putAll as we need to modify the reply list in
-			// the Article
-			// for(Map.Entry<Integer, Article>)
-		} finally {
-			writeL.unlock();
-		}
-
-	}
 }

@@ -14,9 +14,6 @@ public abstract class AbstractServer implements TcpServerDelegate {
 		SEQUENTIAL, QUORUM
 	}
 
-	protected static final String WRITE_COMMAND = "WRITE";
-	protected static final String READ_COMMAND = "READ";
-	protected static final String READITEM_COMMAND = "RDITEM";
 	protected static final String REGISTER_COMMAND = "REGISTER";
 	protected static final String INVALID_COMMAND = "INVCOM";
 

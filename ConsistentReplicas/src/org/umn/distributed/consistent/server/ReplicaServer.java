@@ -11,6 +11,11 @@ import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public abstract class ReplicaServer extends AbstractServer {
 
+	protected static final String INTERNAL_WRITE_COMMAND = "INWRITE";
+	protected static final String WRITE_COMMAND = "WRITE";
+	protected static final String READ_COMMAND = "READ";
+	protected static final String READITEM_COMMAND = "RDITEM";
+
 	private static final String START_ELECTION_COMMAND = "STRTELEC";
 	private static final String END_ELECTION_COMMAND = "ENDELEC";
 

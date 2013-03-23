@@ -9,7 +9,6 @@ import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
-import org.umn.distributed.consistent.server.AbstractServer.STRATEGY;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class SequentialServer extends ReplicaServer {
@@ -19,7 +18,6 @@ public class SequentialServer extends ReplicaServer {
 
 	@Override
 	public String post(String message) {
-		return null;
 	}
 
 	@Override

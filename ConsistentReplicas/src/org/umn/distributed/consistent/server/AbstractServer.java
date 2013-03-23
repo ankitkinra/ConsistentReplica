@@ -33,10 +33,10 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected Machine myInfo;
 	protected STRATEGY strategy;
 	// TODO think if we can change this to list sorted in increasing order
-	private TreeMap<Integer, Machine> knownClients = new TreeMap<Integer, Machine>();
+	protected TreeMap<Integer, Machine> knownClients = new TreeMap<Integer, Machine>();
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
-	private final Lock readL = rwl.readLock();
-	private final Lock writeL = rwl.writeLock();
+	protected final Lock readL = rwl.readLock();
+	protected final Lock writeL = rwl.writeLock();
 
 	protected AbstractServer(STRATEGY strategy, int port, int numTreads) {
 		this.strategy = strategy;

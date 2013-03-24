@@ -20,12 +20,19 @@ import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
 
 public class QuorumServer extends ReplicaServer {
-	private static final String READ_LIST_COMMAND = "GET_BB|FROM_ID=%%ARTICLE_ID%%";
+	private static final String READ_BB_COMMAND = "GET_BB";
+	private static final String READ_BB_COMMAND_COMPLETE = READ_BB_COMMAND
+			+ "-FROM_ID=%%ARTICLE_ID%%";
 	private Integer lastSyncedId;
+	private Object syncLock = new Object();
+	private SyncThread syncThread = new SyncThread(syncLock,
+			Props.QUORUM_SYNC_TIME_MILLIS);
 
 	public QuorumServer(boolean isCoordinator, String coordinatorIP,
 			int coordinatorPort) {
 		super(STRATEGY.QUORUM, isCoordinator, coordinatorIP, coordinatorPort);
+		// start the sync thread
+		syncThread.start();
 		validateParameters();
 	}
 
@@ -39,6 +46,7 @@ public class QuorumServer extends ReplicaServer {
 		HashMap<Machine, String> responseMap = getBBFromReadQuorum();
 		// merge stage
 		mergeResponsesWithLocal(responseMap);
+		// doing this instead of calling sync as we want to wait on this operation
 		lastSyncedId = this.bb.getMaxId();
 	}
 
@@ -49,11 +57,11 @@ public class QuorumServer extends ReplicaServer {
 			// get BB from string
 			if (first) {
 				mergedBulletinBoard = BulletinBoard
-						.parseBulletinBoard(machineBBStr.getValue());
+						.parseBBFromArticleList(machineBBStr.getValue());
 				first = false;
 			} else {
 				BulletinBoard bbThis = BulletinBoard
-						.parseBulletinBoard(machineBBStr.getValue());
+						.parseBBFromArticleList(machineBBStr.getValue());
 				// now merge
 				mergedBulletinBoard = BulletinBoard.mergeBB(
 						mergedBulletinBoard, bbThis);
@@ -62,7 +70,7 @@ public class QuorumServer extends ReplicaServer {
 		}
 		// once the bulletinBoard is merged, we can just replace
 		this.bb.mergeWithMe(mergedBulletinBoard);
-		
+
 	}
 
 	private void validateParameters() {
@@ -73,7 +81,11 @@ public class QuorumServer extends ReplicaServer {
 		// this is local write for me
 		Article a = Article.parseArticle(message);
 		if (a != null) {
-			this.bb.addArticle(a);
+			if (a.isRoot()) {
+				this.bb.addArticle(a);
+			} else {
+				this.bb.addArticleReply(a);
+			}
 		}
 		return null;
 	}
@@ -88,7 +100,8 @@ public class QuorumServer extends ReplicaServer {
 		int articleId = -1;
 		do {
 			try {
-				articleId = populatWriteQuorum(articleId, successfulServers, failedServers);
+				articleId = populatWriteQuorum(articleId, successfulServers,
+						failedServers);
 			} catch (IOException e) {
 				logger.error(
 						"Error in populating the quorum, no option but to try again",
@@ -126,7 +139,11 @@ public class QuorumServer extends ReplicaServer {
 				t.start();
 			}
 			try {
-				writeQuorumlatch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
+				if (!writeQuorumlatch.await(Props.NETWORK_TIMEOUT,
+						TimeUnit.MILLISECONDS)) {
+					// as nw has timed out I need to interrupt all other threads
+					interruptWriteThreads(threadsToWrite);
+				}
 				for (WriteService wr : threadsToWrite) {
 					String str = null;
 					// try {
@@ -143,11 +160,7 @@ public class QuorumServer extends ReplicaServer {
 				logger.error("Error", ie);
 				// interrupt all other threads
 				// TODO other servers should kill
-				for (WriteService wr : threadsToWrite) {
-					if (wr.dataRead == null) {
-						wr.interrupt();
-					}
-				}
+				interruptWriteThreads(threadsToWrite);
 			} finally {
 				// if not thread has some value add it to the success servers
 				// else let
@@ -164,6 +177,14 @@ public class QuorumServer extends ReplicaServer {
 
 	}
 
+	private void interruptWriteThreads(List<WriteService> threadsToWrite) {
+		for (WriteService wr : threadsToWrite) {
+			if (wr.dataRead == null) {
+				wr.interrupt();
+			}
+		}
+	}
+
 	private int populatWriteQuorum(Integer articleId,
 			HashSet<Machine> successfulServers, HashSet<Machine> failedServers)
 			throws IOException {
@@ -172,10 +193,6 @@ public class QuorumServer extends ReplicaServer {
 				failedServers);
 	}
 
-	/**
-	 * TODO make readItemList in a separate thread as we need to wait for a lot
-	 * of servers to return results.
-	 */
 	@Override
 	public String readItemList(String req) {
 
@@ -184,7 +201,7 @@ public class QuorumServer extends ReplicaServer {
 		// once we have populated and know that required quorum was achieved
 
 		mergeResponsesWithLocal(responseMap);
-		// TODO reset the thread which does sync as sync just happened
+		syncThread.resetTimer();
 		return bb.toString();
 	}
 
@@ -231,8 +248,11 @@ public class QuorumServer extends ReplicaServer {
 				t.start();
 			}
 			try {
-				readQuorumlatch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
-				// TODO add a timeout and then fail the operation
+				if (!readQuorumlatch.await(Props.NETWORK_TIMEOUT,
+						TimeUnit.MILLISECONDS)) {
+					interruptReadThreads(threadsToRead);
+				}
+				
 				for (ReadService rs : threadsToRead) {
 					String str = null;
 
@@ -244,11 +264,7 @@ public class QuorumServer extends ReplicaServer {
 				logger.error("Error", ie);
 				// interrupt all other threads
 				// TODO other servers should kill
-				for (ReadService rs : threadsToRead) {
-					if (rs.dataRead == null) {
-						rs.interrupt();
-					}
-				}
+				interruptReadThreads(threadsToRead);
 			} finally {
 				// if not thread has some value add it to the success servers
 				// else let
@@ -261,6 +277,14 @@ public class QuorumServer extends ReplicaServer {
 				}
 			}
 
+		}
+	}
+
+	private void interruptReadThreads(List<ReadService> threadsToRead) {
+		for (ReadService rs : threadsToRead) {
+			if (rs.dataRead == null) {
+				rs.interrupt();
+			}
 		}
 	}
 
@@ -312,9 +336,9 @@ public class QuorumServer extends ReplicaServer {
 			try {
 				dataRead = TCPClient
 						.sendData(this.serverToRead, Utils
-								.stringToByte(READ_LIST_COMMAND.replaceAll(
-										"%%ARTICLE_ID%%",
-										String.valueOf(lastSyncedId))));
+								.stringToByte(READ_BB_COMMAND_COMPLETE
+										.replaceAll("%%ARTICLE_ID%%",
+												String.valueOf(lastSyncedId))));
 			} catch (IOException e) {
 				logger.error("ReadServiceError", e);
 			}
@@ -341,7 +365,6 @@ public class QuorumServer extends ReplicaServer {
 
 		@Override
 		public void run() {
-			// TODO Auto-generated method stub
 			try {
 				String command = WRITE_COMMAND + "-"
 						+ articleToWrite.toString();
@@ -356,13 +379,90 @@ public class QuorumServer extends ReplicaServer {
 		}
 	}
 
+	/**
+	 * Requests that I can answer to
+	 * 
+	 * <pre>
+	 * 1. read: Need to return my bb state after the mentioned id : GET_BB-FROM_ID=<id> 
+	 * 2. write: Need to write the article to my BB and return response : WRITE_COMMAND-<articleToString>
+	 * </pre>
+	 */
 	@Override
 	public byte[] handleSpecificRequest(String request) {
+		String[] req = request.split(COMMAND_PARAM_SEPARATOR);
+		if (request.startsWith(READ_QUORUM_COMMAND)) {
+			// need to get bb converted to string from a specific id
+			int lastSyncArticleId = 0;
+			String[] arrStr = req[1].split("=");
+			lastSyncArticleId = Integer.parseInt(arrStr[1]);
+			List<Article> articles = this.bb.getArticlesFrom(lastSyncArticleId);
+			return parseBytesFromArticleList(articles);
+		} else if (request.startsWith(WRITE_QUORUM_COMMAND)) {
+			write(req[1]);
+			return Utils.stringToByte(COMMAND_SUCCESS);
+			// write local
+
+		}
 		return null;
+
+	}
+
+	private byte[] parseBytesFromArticleList(List<Article> articles) {
+		StringBuilder sb = new StringBuilder();
+		for (Article a : articles) {
+			sb.append(a.toString()).append(";");
+		}
+		return Utils.stringToByte(sb.toString());
 	}
 
 	@Override
 	protected Coordinator createCoordinator() {
 		return new QuorumCoordinator();
+	}
+
+	private class SyncThread extends Thread {
+		boolean shutDownInvoked = false;
+		Object lockObj = null;
+		long totalTimeToSleep = 0;
+		boolean syncTookPlace = false;
+
+		public SyncThread(Object lock, long timeToSleep) {
+			this.lockObj = lock;
+			this.totalTimeToSleep = timeToSleep;
+		}
+
+		public void resetTimer() {
+			syncTookPlace = true;
+		}
+
+		void invokeShutdown() {
+			this.shutDownInvoked = true;
+		}
+
+		public void run() {
+			while (!shutDownInvoked) {
+				try {
+					synchronized (this.lockObj) {
+						this.lockObj.wait(this.totalTimeToSleep);
+					}
+					if (syncTookPlace) {
+						syncTookPlace = false;
+						continue;
+					} else {
+						syncBB();
+					}
+				} catch (InterruptedException e) {
+					logger.error("Error in syncBB", e);
+				}
+			}
+		}
+	}
+
+	protected void postUnRegister() {
+		this.syncThread.invokeShutdown();
+	}
+
+	public static void main(String[] args) {
+
 	}
 }

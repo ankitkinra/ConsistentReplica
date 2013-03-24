@@ -55,8 +55,8 @@ public abstract class Coordinator extends AbstractServer {
 	@Override
 	public byte[] handleRequest(byte[] request) {
 		String reqStr = Utils.byteToString(request, Props.ENCODING);
-		StringBuilder builder = new StringBuilder();
 		if (reqStr.startsWith(REGISTER_COMMAND)) {
+			StringBuilder builder = new StringBuilder();
 			Machine machineToAdd = Machine.parse(reqStr
 					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length()));
@@ -98,6 +98,17 @@ public abstract class Coordinator extends AbstractServer {
 					+ " was added by coordinator to all replicas");
 			return Utils.stringToByte(COMMAND_SUCCESS + builder.toString());
 		}
+		if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
+			logger.debug("Client requested the registered server list");
+			StringBuilder builder = new StringBuilder();
+			builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR);
+			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
+			for (Machine currMachine : machineSetToUpdateWithNewServer) {
+				builder.append(currMachine);
+			}
+			return Utils.stringToByte(builder.toString());
+		}
+
 		return handleSpecificRequest(reqStr);
 	}
 

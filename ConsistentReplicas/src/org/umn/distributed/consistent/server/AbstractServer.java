@@ -24,26 +24,23 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	}
 
 	protected static final String REGISTER_COMMAND = "REGISTER";
+	public static final String GET_REGISTERED_COMMAND = "GTRGSTRD";
 	protected static final String ADD_SERVER_COMMAND = "ADDSRV";
 	protected static final String REMOVE_SERVER_COMMAND = "RMSRV";
 
 	protected static final String INVALID_COMMAND = "INVCOM";
 
 	protected static final String HEARTBEAT_COMMAND = "PING";
-	protected static final String COMMAND_SUCCESS = "SUCCESS";
-	protected static final String COMMAND_FAILED = "FAILED";
+	public static final String COMMAND_SUCCESS = "SUCCESS";
+	public static final String COMMAND_FAILED = "FAILED";
 
 	public static final String READ_QUORUM_COMMAND = "RQ";
 	public static final String WRITE_QUORUM_COMMAND = "WQ";
 
 	public static final String GET_READ_QUORUM_COMMAND = "GRQ";
 	public static final String GET_WRITE_QUORUM_COMMAND = "GWQ";
-	
-	public static final String READ_QUORUM_RESPONSE = "RQRESPONSE";
 
 	public static final String COMMAND_PARAM_SEPARATOR = "-";
-	public static final String LIST_SEPARATOR = ";";
-	public static final String COMMAND_VALUE_SEPARATOR = "=";
 	private TCPServer tcpServer;
 	protected int port;
 	protected Machine myInfo;

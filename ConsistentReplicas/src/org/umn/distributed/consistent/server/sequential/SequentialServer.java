@@ -47,6 +47,7 @@ public class SequentialServer extends ReplicaServer {
 		}
 	}
 
+	//TODO: no parameter required because we always pass all the articles
 	@Override
 	public String readItemList(String req) {
 		return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
@@ -160,6 +161,7 @@ public class SequentialServer extends ReplicaServer {
 					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length())));
 		} else if (request.startsWith(READ_COMMAND)) {
+			//TODO: not needed because no id is being passed now
 			return Utils.stringToByte(readItemList(request
 					.substring((READ_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length())));

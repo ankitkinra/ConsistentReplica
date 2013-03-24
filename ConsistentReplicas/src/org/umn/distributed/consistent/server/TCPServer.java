@@ -108,7 +108,6 @@ public class TCPServer implements Runnable {
 					logger.debug("Data returned to client :" + Utils.byteToString(buffer));
 				}
 				socket.getOutputStream().write(buffer);
-				is.close();
 				bos.close();
 
 				// TODO:add specific handling for different exceptions types

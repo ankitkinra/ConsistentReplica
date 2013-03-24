@@ -3,9 +3,7 @@ package org.umn.distributed.consistent.server;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.log4j.Level;
 import org.umn.distributed.consistent.common.BulletinBoard;
-import org.umn.distributed.consistent.common.LoggingUtils;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
@@ -15,9 +13,9 @@ import org.umn.distributed.consistent.server.coordinator.Coordinator;
 public abstract class ReplicaServer extends AbstractServer {
 
 	protected static final String INTERNAL_WRITE_COMMAND = "INWRITE";
-	protected static final String WRITE_COMMAND = "WRITE";
-	protected static final String READ_COMMAND = "READ";
-	protected static final String READITEM_COMMAND = "RDITEM";
+	public static final String WRITE_COMMAND = "WRITE";
+	public static final String READ_COMMAND = "READ";
+	public static final String READITEM_COMMAND = "RDITEM";
 
 	private static final String START_ELECTION_COMMAND = "STRTELEC";
 	private static final String END_ELECTION_COMMAND = "ENDELEC";
@@ -124,8 +122,6 @@ public abstract class ReplicaServer extends AbstractServer {
 				}
 			}
 		}
-		LoggingUtils.addSpecificFileAppender(getClass(), "logs\\",
-				this.myInfo.getId() + "", Level.DEBUG);
 		logger.info(myInfo + " registered to coordinator " + coordinatorMachine);
 	}
 
@@ -222,8 +218,7 @@ public abstract class ReplicaServer extends AbstractServer {
 			// acceptign reqs after coordinator
 			return null;
 		}
-		logger.error("request could not be handled, request came in as="+req);
-		return handleSpecificRequest(req);
+		return handleSpecificRequest("");
 	}
 
 	public abstract byte[] handleSpecificRequest(String request);

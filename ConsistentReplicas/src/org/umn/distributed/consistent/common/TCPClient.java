@@ -35,7 +35,6 @@ public class TCPClient {
 				bos.write(buffer, 0, count);
 			}
 			bos.flush();
-			is.close();
 			buffer = bos.toByteArray();
 			bos.close();
 		} catch (IOException ioe) {

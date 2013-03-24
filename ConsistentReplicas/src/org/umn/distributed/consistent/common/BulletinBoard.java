@@ -12,9 +12,11 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.umn.distributed.consistent.server.AbstractServer;
+
 public class BulletinBoard {
 
-	private static final int BASE_ARTICLE_ID = 0;
+	private static final Integer BASE_ARTICLE_ID = 0;
 	public static final String FORMAT_START = "{";
 	public static final String FORMAT_ENDS = "}";
 	// TODO need to protect this map under ReentrantReadWriteLock
@@ -360,7 +362,9 @@ public class BulletinBoard {
 
 		private Set<Integer> getReplyIdList() {
 			Set<Integer> newReplyList = new HashSet<Integer>();
-			newReplyList.addAll(replyList);
+			if (replyList != null) {
+				newReplyList.addAll(replyList);
+			}
 			return newReplyList;
 		}
 
@@ -380,6 +384,8 @@ public class BulletinBoard {
 			// is lastSyncArticleId == 0
 			Entry<Integer, BulletinBoardEntry> entry = map
 					.ceilingEntry(lastSyncArticleId + 1);
+			System.out.println(String.format("entry=%s, lastSyncArticleId=%s",
+					entry, lastSyncArticleId));
 			SortedMap<Integer, BulletinBoardEntry> tailMap = entry != null ? map
 					.tailMap(entry.getKey()) : null;
 
@@ -389,6 +395,8 @@ public class BulletinBoard {
 					articles.add(entryItr.getValue().getArticle());
 				}
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		} finally {
 			readL.unlock();
 		}
@@ -404,13 +412,18 @@ public class BulletinBoard {
 	public static BulletinBoard parseBBFromArticleList(
 			String articleListInString) {
 		BulletinBoard bb = new BulletinBoard();
-		String[] articleList = articleListInString.split(";");
+		String[] articleList = articleListInString.split(AbstractServer.LIST_SEPARATOR);
 		for (String art : articleList) {
-			Article a = Article.parseArticle(art);
-			if (a.isRoot()) {
-				bb.addArticle(a);
-			} else {
-				bb.addArticleReply(a);
+			Article a = null;
+			try {
+				a = Article.parseArticle(art);
+				if (a.isRoot()) {
+					bb.addArticle(a);
+				} else {
+					bb.addArticleReply(a);
+				}
+			} catch (IllegalArgumentException e) {
+
 			}
 		}
 		return bb;

@@ -87,7 +87,7 @@ public class Article{
 			throw new IllegalArgumentException("Invalid article format");
 		}
 		articleStr = articleStr.substring(1, articleStr.length() - 1);
-		String articleParams[] = articleStr.split("\\|");
+		String articleParams[] = articleStr.split("\\|",-1);
 		if (articleParams.length != 4) {
 			throw new IllegalArgumentException(
 					"Invalid article parameter number");

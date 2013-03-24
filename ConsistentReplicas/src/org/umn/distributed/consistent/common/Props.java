@@ -65,7 +65,7 @@ public class Props {
 			NETWORK_TIMEOUT = Integer.parseInt(prop
 					.getProperty("totalNetworkTimeout"));
 			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop
-					.getProperty("totalNetworkTimeout", "5000"));
+					.getProperty("quorumSyncTimeout", "10000"));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

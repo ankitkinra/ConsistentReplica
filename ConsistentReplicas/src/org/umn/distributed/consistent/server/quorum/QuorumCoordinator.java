@@ -52,7 +52,7 @@ public class QuorumCoordinator extends Coordinator {
 			 * req[1] == articleId req[2] == represents SuccessServers req[3] ==
 			 * represents FailedServers
 			 */
-			logger.info("GET_WRITE_QUORUM_COMMAND;request at QC="+request);
+			logger.info("GET_WRITE_QUORUM_COMMAND;request at QC=" + request);
 			int i = 1;
 			String[] arrStr = req[i].split("=");
 			int sentMachineId = Integer.parseInt(arrStr[1]);
@@ -85,7 +85,7 @@ public class QuorumCoordinator extends Coordinator {
 	}
 
 	private byte[] getReadQuorumMessage(Set<Machine> failedMachines) {
-		String prefix = "RMQ;";
+		String prefix = "RMQ" + COMMAND_PARAM_SEPARATOR;
 		return getQuorumReturnMessage(prefix, failedMachines);
 	}
 
@@ -111,7 +111,8 @@ public class QuorumCoordinator extends Coordinator {
 	 */
 	private byte[] getWriteQuorumReturnMessage(Integer articleId,
 			Set<Machine> failedMachines) {
-		String prefix = "WMQ;aid=" + articleId + ";";
+		String prefix = "WMQ" + COMMAND_PARAM_SEPARATOR + "aid=" + articleId
+				+ COMMAND_PARAM_SEPARATOR;
 		return getQuorumReturnMessage(prefix, failedMachines);
 	}
 
@@ -119,14 +120,14 @@ public class QuorumCoordinator extends Coordinator {
 			Set<Machine> failedMachines) {
 		StringBuilder quorumResponse = new StringBuilder(prefix).append("F=");
 		for (Machine m : failedMachines) {
-			quorumResponse.append(m.getId()).append(":").append(m.getIP()).append(":").append(m.getPort())
-					.append(";");
+			quorumResponse.append(m.getId()).append(":").append(m.getIP())
+					.append(":").append(m.getPort()).append(LIST_SEPARATOR);
 		}
 		return Utils.stringToByte(quorumResponse.toString());
 	}
 
-	private void getQuorum(boolean readQuorum,int ownMachineId,  Set<Machine> successMachines,
-			Set<Machine> failedMachines) {
+	private void getQuorum(boolean readQuorum, int ownMachineId,
+			Set<Machine> successMachines, Set<Machine> failedMachines) {
 		logger.debug(String.format(
 				"getQuorum;readQ=%s,successMachines=%s, failedMachines=%s",
 				readQuorum, successMachines, failedMachines));
@@ -160,16 +161,26 @@ public class QuorumCoordinator extends Coordinator {
 				Set<Machine> knownMachineSet = getKnownMachineSet();
 				knownMachineSet.removeAll(successMachines);
 				knownMachineSet.removeAll(failedMachines);
-				
+
 				if (knownMachineSet.size() > 0) {
 					failedMachines.clear();
-					if(sendOwnMachineAsQuorum){
-						if(knownMachineSet.contains(sendMachine)){
-							// if knownMachineSet still contains sendMachine, then include it to final list
-							failedMachines.add(sendMachine);
-							knownMachineSet.remove(sendMachine);
-							machinesToReturn--;
+					if (!readQuorum) {
+						if (sendOwnMachineAsQuorum) {
+							if (knownMachineSet.contains(sendMachine)) {
+								// if knownMachineSet still contains
+								// sendMachine,
+								// then include it to final list
+								failedMachines.add(sendMachine);
+								knownMachineSet.remove(sendMachine);
+								machinesToReturn--;
+							}
 						}
+					} else {
+						// if readQuorum then do not send own machine back, let
+						// readQuorum be empty if needed
+						knownMachineSet.remove(sendMachine);
+						// as we can always merge local and respond to the
+						// client
 					}
 					LinkedList<Machine> machineList = new LinkedList<Machine>();
 					machineList.addAll(knownMachineSet);
@@ -220,8 +231,10 @@ public class QuorumCoordinator extends Coordinator {
 			qc.addMachine(m);
 		}
 
-		String readQrqst = GET_READ_QUORUM_COMMAND+"-M=4-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
-		String writeQrqst = GET_WRITE_QUORUM_COMMAND+"-M=4-A=0-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
+		String readQrqst = GET_READ_QUORUM_COMMAND
+				+ "-M=4-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
+		String writeQrqst = GET_WRITE_QUORUM_COMMAND
+				+ "-M=4-A=0-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
 		System.out.println(Utils.byteToString(qc
 				.handleSpecificRequest(readQrqst)));
 		System.out.println(Utils.byteToString(qc

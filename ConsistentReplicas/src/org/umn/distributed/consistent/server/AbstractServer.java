@@ -38,8 +38,12 @@ public abstract class AbstractServer implements TcpServerDelegate {
 
 	public static final String GET_READ_QUORUM_COMMAND = "GRQ";
 	public static final String GET_WRITE_QUORUM_COMMAND = "GWQ";
+	
+	public static final String READ_QUORUM_RESPONSE = "RQRESPONSE";
 
 	public static final String COMMAND_PARAM_SEPARATOR = "-";
+	public static final String LIST_SEPARATOR = ";";
+	public static final String COMMAND_VALUE_SEPARATOR = "=";
 	private TCPServer tcpServer;
 	protected int port;
 	protected Machine myInfo;

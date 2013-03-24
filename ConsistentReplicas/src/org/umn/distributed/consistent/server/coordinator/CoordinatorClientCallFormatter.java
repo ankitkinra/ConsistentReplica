@@ -68,11 +68,11 @@ public class CoordinatorClientCallFormatter {
 				.stringToByte(writeQuorumMessage.toString(), Props.ENCODING));
 		// we will modify the variables sent to us
 		String awqStr = Utils.byteToString(awqReturn, Props.ENCODING);
-		// return expected as "RMQ;<server1>;<server2>;..
-		String[] brokenOnSemiColon = awqStr.split(";");
-		for (int i = 1; i < brokenOnSemiColon.length; i++) {
+		// return expected as "WMQ-aid=<id>-F=<machine1>;<machine2>..."
+		String[] brokenOnCommandSeparator = awqStr.split(AbstractServer.COMMAND_PARAM_SEPARATOR);
+		for (int i = 1; i < brokenOnCommandSeparator.length; i++) {
 
-			String[] brokenOnEqual = brokenOnSemiColon[i].split("=");
+			String[] brokenOnEqual = brokenOnCommandSeparator[i].split(AbstractServer.COMMAND_VALUE_SEPARATOR);
 			switch (i) {
 			case 1:
 				// this is the Aid
@@ -100,7 +100,7 @@ public class CoordinatorClientCallFormatter {
 	private static void parseAndSetMachines(Set<Machine> machineSetPut,
 			String machineSeparatedBySemiColon) {
 		List<Machine> machines = new LinkedList<Machine>();
-		String[] semiColonSeparated = machineSeparatedBySemiColon.split(";");
+		String[] semiColonSeparated = machineSeparatedBySemiColon.split(AbstractServer.LIST_SEPARATOR);
 		for (String server : semiColonSeparated) {
 			String[] serverAdd = server.split(":");
 			machines.add(new Machine(Integer.parseInt(serverAdd[0]),
@@ -118,7 +118,7 @@ public class CoordinatorClientCallFormatter {
 		for (Machine server : machineSet) {
 
 			sb.append(server.getId()).append(":").append(server.getIP())
-					.append(":").append(server.getPort()).append("|");
+					.append(":").append(server.getPort()).append("|"); //TODO convert this to list-separator
 
 		}
 		return sb.toString();
@@ -148,15 +148,21 @@ public class CoordinatorClientCallFormatter {
 		byte[] rqReturn = TCPClient.sendData(coordinatorMachine,
 				Utils.stringToByte(readMessage.toString(), Props.ENCODING));
 		// we will modify the variables sent to us
+		/**
+		 * response = RMQ-F=<machine1>;<machine2>
+		 */
 		String rqStr = Utils.byteToString(rqReturn, Props.ENCODING);
+		String[] rqStrBrokenOnCommandSeparator = rqStr.split(AbstractServer.COMMAND_PARAM_SEPARATOR);
+		/*String[] rqStrBrokenOnValueSeparator = rqStr.split(AbstractServer.COMMAND_VALUE_SEPARATOR);
+		String[] brokenOnSemiColon = rqStrBrokenOnValueSeparator[1].split(AbstractServer.LIST_SEPARATOR);*/
+		for (int i = 1; i < rqStrBrokenOnCommandSeparator.length; i++) {
 
-		String[] brokenOnSemiColon = rqStr.split(";");
-		for (int i = 1; i < brokenOnSemiColon.length; i++) {
-
-			String[] brokenOnEqual = brokenOnSemiColon[i].split("=");
+			String[] brokenOnEqual = rqStrBrokenOnCommandSeparator[i].split(AbstractServer.COMMAND_VALUE_SEPARATOR);
 			switch (i) {
 			case 1:
-				parseAndSetMachines(failedMachines, brokenOnEqual[1]);
+				if(brokenOnEqual.length > 1){
+					parseAndSetMachines(failedMachines, brokenOnEqual[1]);
+				}
 				break;
 			default:
 				break;

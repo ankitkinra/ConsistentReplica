@@ -3,7 +3,6 @@ package org.umn.distributed.consistent.server.coordinator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +55,7 @@ public abstract class Coordinator extends AbstractServer {
 	@Override
 	public byte[] handleRequest(byte[] request) {
 		String reqStr = Utils.byteToString(request, Props.ENCODING);
+		StringBuilder builder = new StringBuilder();
 		if (reqStr.startsWith(REGISTER_COMMAND)) {
 			Machine machineToAdd = Machine.parse(reqStr
 					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
@@ -63,35 +63,22 @@ public abstract class Coordinator extends AbstractServer {
 			machineToAdd.setid(knownMachineID.getAndIncrement());
 			logger.info(machineToAdd
 					+ " trying to register with the coordinator");
-			this.addMachine(machineToAdd);
 			List<UpdaterThread> threads = new ArrayList<UpdaterThread>();
 			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
-			machineSetToUpdateWithNewServer.remove(machineToAdd); // cannot send
-																	// this
-																	// machine
-																	// all the
-																	// machines
-
 			CountDownLatch latch = new CountDownLatch(
-					machineSetToUpdateWithNewServer.size() + 1);
-			UpdaterThread thread = new UpdaterThread(machineToAdd,
-					machineSetToUpdateWithNewServer, latch, true);
-			threads.add(thread);
-			thread.start();
-			Set<Machine> setWithOnlyNewMachine = new HashSet<Machine>();
-			setWithOnlyNewMachine.add(machineToAdd);
-
+					machineSetToUpdateWithNewServer.size());
 			for (Machine currMachine : machineSetToUpdateWithNewServer) {
 				// this is already added to the set once
-				thread = new UpdaterThread(currMachine, setWithOnlyNewMachine,
-						latch, true);
+				UpdaterThread thread = new UpdaterThread(currMachine,
+						machineToAdd, latch, true);
 				threads.add(thread);
 				thread.start();
+				builder.append(currMachine);
 			}
 			try {
 				latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 				for (UpdaterThread t : threads) {
-					if (!Utils.byteToString(t.dataRead).startsWith(
+					if(t.dataRead == null || !Utils.byteToString(t.dataRead).startsWith(
 							COMMAND_SUCCESS)) {
 						logger.error("Unable to update registered list on machine "
 								+ t.serverToUpdate);
@@ -104,7 +91,8 @@ public abstract class Coordinator extends AbstractServer {
 			} catch (InterruptedException ie) {
 				logger.error("Updater latch interrupted", ie);
 			}
-			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
+			this.addMachine(machineToAdd);
+			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + builder.toString());
 		}
 		return handleSpecificRequest(reqStr);
 	}
@@ -151,15 +139,15 @@ public abstract class Coordinator extends AbstractServer {
 
 	protected class UpdaterThread extends Thread {
 		Machine serverToUpdate;
-		Set<Machine> update;
+		Machine machineToAdd;
 		CountDownLatch latchToDecrement;
 		byte[] dataRead;
 		boolean add;
 
-		UpdaterThread(Machine serverToUpdate, Set<Machine> update,
+		UpdaterThread(Machine serverToUpdate, Machine machineToAdd,
 				CountDownLatch latchToDecrement, boolean add) {
 			this.serverToUpdate = serverToUpdate;
-			this.update = update;
+			this.machineToAdd = machineToAdd;
 			this.latchToDecrement = latchToDecrement;
 			this.add = add;
 		}
@@ -171,15 +159,11 @@ public abstract class Coordinator extends AbstractServer {
 				if (add) {
 					builder.append(ADD_SERVER_COMMAND).append(
 							COMMAND_PARAM_SEPARATOR);
-					for (Machine machine : update) {
-						builder.append(machine);
-					}
+					builder.append(machineToAdd);
 				} else {
 					builder.append(REMOVE_SERVER_COMMAND).append(
 							COMMAND_PARAM_SEPARATOR);
-					for (Machine machine : update) {
-						builder.append(machine);
-					}
+					builder.append(machineToAdd);
 				}
 				logger.info("UpdaterThread builder for update operation == "
 						+ builder);

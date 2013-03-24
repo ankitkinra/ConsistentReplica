@@ -2,9 +2,7 @@ package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -74,7 +72,8 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected Machine addMachine(Machine machine) {
 		writeL.lock();
 		try {
-			return this.knownClients.put(machine.getId(), machine);
+			Machine m = this.knownClients.put(machine.getId(), machine);
+			return m;
 		} finally {
 			writeL.unlock();
 		}

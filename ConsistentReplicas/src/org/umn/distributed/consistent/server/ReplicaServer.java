@@ -101,6 +101,20 @@ public abstract class ReplicaServer extends AbstractServer {
 		if (!respStr.startsWith(COMMAND_SUCCESS)) {
 			throw new Exception("Coordinator rejected to register the replica");
 		}
+		else {
+			String respParams[] = respStr.split(COMMAND_PARAM_SEPARATOR);
+			this.myInfo.setid(Integer.parseInt(respParams[1]));
+			if(respParams.length > 2) {
+				int index = -1;
+				int start = 0;
+				while((index = respParams[1].indexOf("]", start)) > -1) {
+					Machine machine = Machine.parse(respParams[2].substring(start, index + 1));
+					this.addMachine(machine);
+					start = index + 1;
+					logger.info("Added replica " + machine + " to known machine list");
+				}
+			}
+		}
 		logger.info("Registered to coordinator " + coordinatorMachine);
 	}
 
@@ -115,7 +129,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	protected void preUnRegister() {
-
+    
 	}
 
 	protected void unRegister() {
@@ -171,14 +185,8 @@ public abstract class ReplicaServer extends AbstractServer {
 		} else if (req.startsWith(ADD_SERVER_COMMAND)) {
 			logger.info("In replica server at addServerCommand, req="+req);
 			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR).length());
-			int index = -1;
-			int start = 0;
-			while((index = req.indexOf("]", start)) > -1) {
-				Machine machine = Machine.parse(req.substring(start, index + 1));
-				this.addMachine(machine);
-				start = index + 1;
-				logger.info("Added replica " + machine + " to other replica list");
-			}
+			Machine machineToAdd = Machine.parse(req);
+			this.addMachine(machineToAdd);
 			return Utils.stringToByte(COMMAND_SUCCESS);
 		} else if (req.startsWith(REMOVE_SERVER_COMMAND)) {
 			this.removeMachine(Machine

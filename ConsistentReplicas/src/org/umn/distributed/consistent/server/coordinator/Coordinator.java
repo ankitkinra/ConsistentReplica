@@ -68,6 +68,7 @@ public abstract class Coordinator extends AbstractServer {
 			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
 			CountDownLatch latch = new CountDownLatch(
 					machineSetToUpdateWithNewServer.size());
+			logger.debug("To update the machines: " + machineSetToUpdateWithNewServer);
 			for (Machine currMachine : machineSetToUpdateWithNewServer) {
 				// this is already added to the set once
 				UpdaterThread thread = new UpdaterThread(currMachine,
@@ -93,6 +94,8 @@ public abstract class Coordinator extends AbstractServer {
 				logger.error("Updater latch interrupted", ie);
 			}
 			this.addMachine(machineToAdd);
+			logger.info(machineToAdd
+					+ " was added by coordinator to all replicas");
 			return Utils.stringToByte(COMMAND_SUCCESS + builder.toString());
 		}
 		return handleSpecificRequest(reqStr);

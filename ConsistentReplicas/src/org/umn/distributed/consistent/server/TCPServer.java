@@ -87,6 +87,7 @@ public class TCPServer implements Runnable {
 
 		@Override
 		public void run() {
+			logger.debug("A client connected to server");
 			InputStream is = null;
 			int buffSize = 1024;
 			byte buffer[] = new byte[buffSize];
@@ -98,7 +99,14 @@ public class TCPServer implements Runnable {
 					bos.write(buffer, 0, count);
 				}
 				bos.flush();
-				buffer = delegate.handleRequest(bos.toByteArray());
+				buffer = bos.toByteArray();
+				if(logger.isDebugEnabled()) {
+					logger.debug("Data received at server: " + Utils.byteToString(buffer));
+				}
+				buffer = delegate.handleRequest(buffer);
+				if(logger.isDebugEnabled()) {
+					logger.debug("Data returned to client :" + Utils.byteToString(buffer));
+				}
 				socket.getOutputStream().write(buffer);
 				is.close();
 				bos.close();

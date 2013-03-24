@@ -5,10 +5,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
+import org.apache.log4j.Logger;
+
 public class TCPClient {
+	protected static Logger logger = Logger.getLogger(TCPClient.class);
 
 	public static byte[] sendData(Machine remoteMachine, byte[] data)
 			throws IOException {
+		if(logger.isDebugEnabled()) {
+			logger.debug("Send " + Utils.byteToString(data) + " to " + remoteMachine);
+		}
 		/**
 		 * This will open a local socket and send the data to the remoteMachine
 		 */
@@ -28,17 +34,13 @@ public class TCPClient {
 			while((count = is.read(buffer)) > -1) {
 				bos.write(buffer, 0, count);
 			}
-//			is = clientSocket.getInputStream();
-//			while (is.available() > 0 && (count = is.read(buffer)) > -1) {
-//				bos.write(buffer, 0, count);
-//			}
 			bos.flush();
 			is.close();
 			buffer = bos.toByteArray();
 			bos.close();
-
-		} catch (IOException e) {
-			throw e;
+		} catch (IOException ioe) {
+			logger.error("Error connecting to " + remoteMachine, ioe);
+			throw ioe;
 		} finally {
 			try {
 				if (clientSocket != null) {
@@ -48,7 +50,9 @@ public class TCPClient {
 				throw ios;
 			}
 		}
-
+		if(logger.isDebugEnabled()) {
+			logger.debug("Data received at client " + Utils.byteToString(buffer));
+		}
 		return buffer;
 	}
 }

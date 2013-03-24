@@ -15,6 +15,7 @@ import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
+import org.umn.distributed.consistent.server.AbstractServer;
 import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
@@ -432,7 +433,7 @@ public class QuorumServer extends ReplicaServer {
 		if (request.startsWith(READ_QUORUM_COMMAND)) {
 			// need to get bb converted to string from a specific id
 			int lastSyncArticleId = 0;
-			String[] arrStr = req[1].split("=");
+			String[] arrStr = req[1].split(AbstractServer.COMMAND_VALUE_SEPARATOR);
 			lastSyncArticleId = Integer.parseInt(arrStr[1]);
 			List<Article> articles = this.bb.getArticlesFrom(lastSyncArticleId);
 			return parseBytesFromArticleList(articles);
@@ -442,7 +443,7 @@ public class QuorumServer extends ReplicaServer {
 			// write local
 
 		}
-		return null;
+		return Utils.stringToByte(INVALID_COMMAND);
 
 	}
 

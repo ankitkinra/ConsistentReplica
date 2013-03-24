@@ -61,14 +61,17 @@ public abstract class Coordinator extends AbstractServer {
 					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length()));
 			machineToAdd.setid(knownMachineID.getAndIncrement());
-			builder.append(COMMAND_PARAM_SEPARATOR).append(machineToAdd.getId()).append(COMMAND_PARAM_SEPARATOR);
+			builder.append(COMMAND_PARAM_SEPARATOR)
+					.append(machineToAdd.getId())
+					.append(COMMAND_PARAM_SEPARATOR);
 			logger.info(machineToAdd
 					+ " trying to register with the coordinator");
 			List<UpdaterThread> threads = new ArrayList<UpdaterThread>();
 			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
 			CountDownLatch latch = new CountDownLatch(
 					machineSetToUpdateWithNewServer.size());
-			logger.debug("To update the machines: " + machineSetToUpdateWithNewServer);
+			logger.debug("To update the machines: "
+					+ machineSetToUpdateWithNewServer);
 			for (Machine currMachine : machineSetToUpdateWithNewServer) {
 				// this is already added to the set once
 				UpdaterThread thread = new UpdaterThread(currMachine,
@@ -80,8 +83,9 @@ public abstract class Coordinator extends AbstractServer {
 			try {
 				latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 				for (UpdaterThread t : threads) {
-					if(t.dataRead == null || !Utils.byteToString(t.dataRead).startsWith(
-							COMMAND_SUCCESS)) {
+					if (t.dataRead == null
+							|| !Utils.byteToString(t.dataRead).startsWith(
+									COMMAND_SUCCESS)) {
 						logger.error("Unable to update registered list on machine "
 								+ t.serverToUpdate);
 						return Utils
@@ -97,8 +101,7 @@ public abstract class Coordinator extends AbstractServer {
 			logger.info(machineToAdd
 					+ " was added by coordinator to all replicas");
 			return Utils.stringToByte(COMMAND_SUCCESS + builder.toString());
-		}
-		if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
+		} else if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
 			logger.debug("Client requested the registered server list");
 			StringBuilder builder = new StringBuilder();
 			builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR);

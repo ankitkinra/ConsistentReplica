@@ -81,7 +81,7 @@ public class SequentialServer extends ReplicaServer {
 
 	@Override
 	public String write(String req) {
-		logger.debug("Request to write article " + req);
+		logger.debug("Request to write article " + req + " on " + this.myInfo);
 		Article article = Article.parseArticle(req);
 		boolean result = false;
 		if (article.isRoot()) {

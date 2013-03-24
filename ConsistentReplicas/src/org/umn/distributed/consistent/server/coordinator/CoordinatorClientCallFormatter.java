@@ -88,7 +88,7 @@ public class CoordinatorClientCallFormatter {
 	private static void parseAndSetMachines(Set<Machine> machineSetPut,
 			String machineSeparatedByPipe) {
 		List<Machine> machines = new LinkedList<Machine>();
-		String[] pipeSeparated = machineSeparatedByPipe.split("|");
+		String[] pipeSeparated = machineSeparatedByPipe.split("\\|");
 		for (String server : pipeSeparated) {
 			String[] serverAdd = server.split(":");
 			machines.add(new Machine(serverAdd[0], Integer

@@ -63,7 +63,7 @@ public class Article{
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append(Article.FORMAT_START).append("").append(id).append("|")
+		builder.append(Article.FORMAT_START).append(id).append("|")
 				.append(parentId).append("|").append(title).append("|")
 				.append(content).append(Article.FORMAT_END);
 		return builder.toString();
@@ -87,7 +87,7 @@ public class Article{
 			throw new IllegalArgumentException("Invalid article format");
 		}
 		articleStr = articleStr.substring(1, articleStr.length() - 1);
-		String articleParams[] = articleStr.split("|");
+		String articleParams[] = articleStr.split("\\|");
 		if (articleParams.length != 4) {
 			throw new IllegalArgumentException(
 					"Invalid article parameter number");

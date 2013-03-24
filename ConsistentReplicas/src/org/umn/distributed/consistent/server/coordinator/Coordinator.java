@@ -18,8 +18,9 @@ import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.AbstractServer;
 
 public abstract class Coordinator extends AbstractServer {
-	
+
 	protected AtomicInteger articleID = new AtomicInteger(1);
+	protected AtomicInteger knownMachineID = new AtomicInteger(1);
 	protected HashMap<Integer, Integer> toRemoveList = new HashMap<Integer, Integer>();
 
 	protected Coordinator(STRATEGY strategy) {
@@ -56,24 +57,34 @@ public abstract class Coordinator extends AbstractServer {
 	public byte[] handleRequest(byte[] request) {
 		String reqStr = Utils.byteToString(request, Props.ENCODING);
 		if (reqStr.startsWith(REGISTER_COMMAND)) {
-			Machine machine = Machine.parse(reqStr
+			Machine machineToAdd = Machine.parse(reqStr
 					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length()));
-			logger.info(machine + " trying to register");
-			this.addMachine(machine);
+			machineToAdd.setid(knownMachineID.getAndIncrement());
+			logger.info(machineToAdd
+					+ " trying to register with the coordinator");
+			this.addMachine(machineToAdd);
 			List<UpdaterThread> threads = new ArrayList<UpdaterThread>();
-			Set<Machine> machineSet = getMachineList();
-			Iterator<Machine> it = machineSet.iterator();
-			CountDownLatch latch = new CountDownLatch(machineSet.size());
-			UpdaterThread thread = new UpdaterThread(machine, machineSet,
-					latch, true);
+			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
+			machineSetToUpdateWithNewServer.remove(machineToAdd); // cannot send
+																	// this
+																	// machine
+																	// all the
+																	// machines
+
+			CountDownLatch latch = new CountDownLatch(
+					machineSetToUpdateWithNewServer.size() + 1);
+			UpdaterThread thread = new UpdaterThread(machineToAdd,
+					machineSetToUpdateWithNewServer, latch, true);
 			threads.add(thread);
 			thread.start();
-			while (it.hasNext()) {
-				Machine currMachine = it.next();
-				Set<Machine> set = new HashSet<Machine>();
-				set.add(machine);
-				thread = new UpdaterThread(currMachine, set, latch, true);
+			Set<Machine> setWithOnlyNewMachine = new HashSet<Machine>();
+			setWithOnlyNewMachine.add(machineToAdd);
+
+			for (Machine currMachine : machineSetToUpdateWithNewServer) {
+				// this is already added to the set once
+				thread = new UpdaterThread(currMachine, setWithOnlyNewMachine,
+						latch, true);
 				threads.add(thread);
 				thread.start();
 			}
@@ -170,14 +181,19 @@ public abstract class Coordinator extends AbstractServer {
 						builder.append(machine);
 					}
 				}
+				logger.info("UpdaterThread builder for update operation == "
+						+ builder);
 				dataRead = TCPClient.sendData(this.serverToUpdate,
 						Utils.stringToByte(builder.toString()));
 				logger.info("Updated server " + serverToUpdate
-						+ " with the latest list");
+						+ " with the latest list; server response = "
+						+ dataRead);
 			} catch (IOException e) {
 				logger.error("Cannot write to " + serverToUpdate, e);
+			} finally {
+				latchToDecrement.countDown();
 			}
-			latchToDecrement.countDown();
+
 		}
 	}
 }

@@ -473,7 +473,7 @@ public class QuorumServer extends ReplicaServer {
 		 */
 		boolean isCoordinator = Boolean.parseBoolean(args[0]);
 		String coordinatorIP = args[1];
-		int coordinatorPort = Integer.parseInt(args[0]);
+		int coordinatorPort = Integer.parseInt(args[2]);
 		QuorumServer qs = new QuorumServer(isCoordinator, coordinatorIP,
 				coordinatorPort);
 		try {
@@ -482,5 +482,7 @@ public class QuorumServer extends ReplicaServer {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		Article a = new Article(0,0,"t1","c1");
+		qs.post(a.toString());
 	}
 }

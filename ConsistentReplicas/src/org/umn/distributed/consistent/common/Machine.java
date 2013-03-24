@@ -103,12 +103,13 @@ public class Machine {
 
 	public static Machine parse(String machineStr)
 			throws IllegalArgumentException {
+		System.out.println("machine" + machineStr);
 		if (!machineStr.startsWith(FORMAT_START)
 				|| !machineStr.endsWith(FORMAT_END)) {
 			throw new IllegalArgumentException("Invalid machine format");
 		}
 		machineStr = machineStr.substring(1, machineStr.length() - 1);
-		String machineParams[] = machineStr.split("|");
+		String machineParams[] = machineStr.split("\\|");
 		if (machineParams.length != 4) {
 			throw new IllegalArgumentException(
 					"Invalid machine parameter number");

@@ -36,6 +36,7 @@ public abstract class ReplicaServer extends AbstractServer {
 		this.coordinator = isCoordinator;
 		if (this.coordinator) {
 			coordinatorIP = Utils.getLocalServerIp();
+			logger.debug("############coordinatorIP="+coordinatorIP);
 			coordinatorPort = Props.COORDINATOR_PORT;
 		}
 		// TODO: set id
@@ -62,10 +63,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	protected String createRegisterMessage() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(REGISTER_COMMAND).append(COMMAND_PARAM_SEPARATOR);
-		builder.append(myInfo.getId()).append(COMMAND_PARAM_SEPARATOR);
-		builder.append(myInfo.getIP()).append(COMMAND_PARAM_SEPARATOR);
-		builder.append(myInfo.getPort()).append(COMMAND_PARAM_SEPARATOR);
-		builder.append(myInfo.getExternalPort());
+		builder.append(myInfo);
 		return builder.toString();
 	}
 
@@ -171,6 +169,7 @@ public abstract class ReplicaServer extends AbstractServer {
 		if (req.startsWith(HEARTBEAT_COMMAND)) {
 			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
 		} else if (req.startsWith(ADD_SERVER_COMMAND)) {
+			logger.info("In replica server at addServerCommand, req="+req);
 			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR).length());
 			int index = -1;
 			int start = 0;

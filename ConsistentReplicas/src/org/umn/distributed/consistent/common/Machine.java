@@ -1,6 +1,9 @@
 package org.umn.distributed.consistent.common;
 
 public class Machine {
+	public static final String FORMAT_START = "[";
+	public static final String FORMAT_END = "]";
+
 	private int id;
 	private String IP;
 	private int port;
@@ -84,12 +87,38 @@ public class Machine {
 		return true;
 	}
 
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Machine [id=").append(id).append(", IP=").append(IP)
-				.append(", port=").append(port).append("]");
+		builder.append(FORMAT_START).append(id).append("|").append(IP)
+				.append("|").append(port).append("|")
+				.append(extPort).append(FORMAT_END);
 		return builder.toString();
 	}
 
+	public static Machine parse(String machineStr)
+			throws IllegalArgumentException {
+		if (!machineStr.startsWith(FORMAT_START)
+				|| !machineStr.endsWith(FORMAT_END)) {
+			throw new IllegalArgumentException("Invalid machine format");
+		}
+		machineStr = machineStr.substring(1, machineStr.length() - 1);
+		String machineParams[] = machineStr.split("|");
+		if (machineParams.length != 4) {
+			throw new IllegalArgumentException(
+					"Invalid machine parameter number");
+		}
+		int id = 0;
+		int internalPort = 0;
+		int externalPort = 0;
+		try {
+			id = Integer.parseInt(machineParams[0]);
+			internalPort = Integer.parseInt(machineParams[2]);
+			externalPort = Integer.parseInt(machineParams[3]);
+			return new Machine(id, machineParams[1], internalPort, externalPort);
+		} catch (NumberFormatException nfe) {
+			throw new IllegalArgumentException("Invalid article id/parentId");
+		}
+	}
 }

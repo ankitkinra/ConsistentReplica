@@ -170,6 +170,23 @@ public abstract class ReplicaServer extends AbstractServer {
 		String req = Utils.byteToString(request, Props.ENCODING);
 		if (req.startsWith(HEARTBEAT_COMMAND)) {
 			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
+		} else if (req.startsWith(ADD_SERVER_COMMAND)) {
+			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR).length());
+			int index = -1;
+			int start = 0;
+			while((index = req.indexOf("]", start)) > -1) {
+				Machine machine = Machine.parse(req.substring(start, index + 1));
+				this.addMachine(machine);
+				start = index + 1;
+				logger.info("Added replica " + machine + " to other replica list");
+			}
+			return Utils.stringToByte(COMMAND_SUCCESS);
+		} else if (req.startsWith(REMOVE_SERVER_COMMAND)) {
+			this.removeMachine(Machine
+					.parse(req
+							.substring((REMOVE_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
+									.length())).getId());
+			return Utils.stringToByte(COMMAND_SUCCESS);
 		} else if (req.startsWith(START_ELECTION_COMMAND)) {
 			// TODO: handle election. SHould block all writes;
 			return null;

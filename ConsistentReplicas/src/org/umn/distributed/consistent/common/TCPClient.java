@@ -20,6 +20,7 @@ public class TCPClient {
 		try {
 			clientSocket = new Socket(remoteMachine.getIP(),
 					remoteMachine.getPort());
+			//TODO: add a timeout here to handle the writer thread waiting in the execution
 			clientSocket.getOutputStream().write(data);
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			is = clientSocket.getInputStream();

@@ -1,20 +1,17 @@
 package org.umn.distributed.consistent.common;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import javax.management.RuntimeErrorException;
+import org.apache.log4j.Logger;
 
 public class BulletinBoard {
+	protected Logger logger = Logger.getLogger(this.getClass());
 
 	public static final String FORMAT_START = "{";
 	public static final String FORMAT_ENDS = "}";
@@ -27,6 +24,7 @@ public class BulletinBoard {
 	private TreeMap<Integer, BulletinBoardEntry> map = new TreeMap<Integer, BulletinBoard.BulletinBoardEntry>();
 
 	public boolean addArticle(Article article) {
+		logger.debug("Write article " + article);
 		// TODO: handle malicious coordinator. It should never return the same
 		// id back
 		writeL.lock();
@@ -39,9 +37,9 @@ public class BulletinBoard {
 			 * using the addReply method
 			 */
 		} finally {
-
 			writeL.unlock();
 		}
+		logger.debug("Written article to bulletin board");
 		return true;
 	}
 
@@ -54,6 +52,7 @@ public class BulletinBoard {
 	 * @return
 	 */
 	public boolean addArticleReply(Article article) {
+		logger.debug("Write reply article " + article);
 		writeL.lock();
 		// now we are assured that any previous writes are complete
 		try {
@@ -69,13 +68,14 @@ public class BulletinBoard {
 				// TODO: handle malicious coordinator. It should never return
 				// the
 				// same id back.
+				logger.debug("Written article reply to bulletin board");
 				return true;
 			}
+			logger.debug("Error writing article to bulletin board");
 			return false;
 		} finally {
 			writeL.unlock();
 		}
-
 	}
 
 	/*

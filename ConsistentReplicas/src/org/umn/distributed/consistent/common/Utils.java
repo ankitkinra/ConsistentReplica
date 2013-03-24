@@ -139,4 +139,8 @@ public class Utils {
 		}
 		return null;
 	}
+
+	public static String byteToString(byte[] data) {
+		return byteToString(data, Props.ENCODING);
+	}
 }

@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -32,7 +33,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected static final String HEARTBEAT_COMMAND = "PING";
 	protected static final String COMMAND_SUCCESS = "SUCCESS";
 	protected static final String COMMAND_FAILED = "FAILED";
-	
+
 	protected static final String READ_QUORUM_COMMAND = "RQ";
 	protected static final String WRITE_QUORUM_COMMAND = "WQ";
 
@@ -92,11 +93,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 		Set<Machine> machineSet = new HashSet<Machine>();
 		readL.lock();
 		try {
-			Collection<Machine> machines = this.knownClients.values();
-			Iterator<Machine> it = machines.iterator();
-			while (it.hasNext()) {
-				machineSet.add(it.next());
-			}
+			machineSet.addAll(this.knownClients.values());
 		} finally {
 			readL.unlock();
 		}
@@ -107,12 +104,14 @@ public abstract class AbstractServer implements TcpServerDelegate {
 		List<Machine> list = new ArrayList<Machine>();
 		readL.lock();
 		try {
-			SortedMap<Integer, Machine> tailMap = this.knownClients.tailMap(id);
-			Iterator<Integer> it = tailMap.keySet().iterator();
-			while (it.hasNext()) {
-				Integer key = it.next();
-				list.add(tailMap.get(key));
+			Entry<Integer, Machine> ceilEntry = knownClients
+					.ceilingEntry(id + 1);
+			SortedMap<Integer, Machine> tailMap = this.knownClients
+					.tailMap(ceilEntry.getKey());
+			for (Entry<Integer, Machine> entry : tailMap.entrySet()) {
+				list.add(entry.getValue());
 			}
+
 		} catch (IllegalArgumentException iae) {
 			logger.error(
 					"Id :" + id + " outside its range: "

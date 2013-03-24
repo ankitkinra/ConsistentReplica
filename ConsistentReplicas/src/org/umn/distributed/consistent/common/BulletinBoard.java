@@ -375,10 +375,14 @@ public class BulletinBoard {
 			// is lastSyncArticleId == 0
 			Entry<Integer, BulletinBoardEntry> entry = map
 					.ceilingEntry(lastSyncArticleId + 1);
-			SortedMap<Integer,BulletinBoardEntry> tailMap = map.tailMap(entry.getKey());
-			
-			for(Entry<Integer, BulletinBoardEntry> entryItr : tailMap.entrySet()){
-				articles.add(entryItr.getValue().getArticle());
+			SortedMap<Integer, BulletinBoardEntry> tailMap = entry != null ? map
+					.tailMap(entry.getKey()) : null;
+
+			if (tailMap != null) {
+				for (Entry<Integer, BulletinBoardEntry> entryItr : tailMap
+						.entrySet()) {
+					articles.add(entryItr.getValue().getArticle());
+				}
 			}
 		} finally {
 			readL.unlock();
@@ -388,17 +392,19 @@ public class BulletinBoard {
 
 	/**
 	 * expects articleString as article1;article2;..
+	 * 
 	 * @param articleListInString
 	 * @return
 	 */
-	public static BulletinBoard parseBBFromArticleList(String articleListInString) {
+	public static BulletinBoard parseBBFromArticleList(
+			String articleListInString) {
 		BulletinBoard bb = new BulletinBoard();
 		String[] articleList = articleListInString.split(";");
-		for(String art:articleList){
+		for (String art : articleList) {
 			Article a = Article.parseArticle(art);
-			if(a.isRoot()){
+			if (a.isRoot()) {
 				bb.addArticle(a);
-			}else{
+			} else {
 				bb.addArticleReply(a);
 			}
 		}

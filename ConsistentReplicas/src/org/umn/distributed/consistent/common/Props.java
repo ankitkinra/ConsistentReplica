@@ -27,13 +27,13 @@ public class Props {
 	public static int QUORUM_SYNC_TIME_MILLIS = 5000;
 
 	static{
-		loadProperties();
+		loadProperties("config.properties");
 	}
 	
-	private static void loadProperties() {
+	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {
-			prop.load(new FileInputStream("config.properties"));
+			prop.load(new FileInputStream(propertyFile));
 			ENCODING = prop.getProperty("encoding","UTF8");
 
 			// TODO: validate the port numbers before using

@@ -29,6 +29,9 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected static final String HEARTBEAT_COMMAND = "PING";
 	protected static final String COMMAND_SUCCESS = "SUCCESS";
 	protected static final String COMMAND_FAILED = "FAILED";
+	
+	protected static final String READ_QUORUM_COMMAND = "RQ";
+	protected static final String WRITE_QUORUM_COMMAND = "WQ";
 
 	protected static final String COMMAND_PARAM_SEPARATOR = "-";
 	private TCPServer tcpServer;

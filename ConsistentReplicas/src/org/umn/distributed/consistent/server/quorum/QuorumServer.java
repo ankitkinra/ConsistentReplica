@@ -85,15 +85,16 @@ public class QuorumServer extends ReplicaServer {
 		HashSet<Machine> successfulServers = new HashSet<Machine>();
 		HashSet<Machine> failedServers = new HashSet<Machine>();
 		HashMap<Machine, Boolean> writeStatus = new HashMap<Machine, Boolean>();
-		Integer articleId = -1;
+		int articleId = -1;
 		do {
 			try {
-				populatWriteQuorum(articleId, successfulServers, failedServers);
+				articleId = populatWriteQuorum(articleId, successfulServers, failedServers);
 			} catch (IOException e) {
 				logger.error(
 						"Error in populating the quorum, no option but to try again",
 						e);
 			}
+			aToWrite.setId(articleId);
 			executeWriteRequestOnWriteQuorum(writeStatus, successfulServers,
 					failedServers, aToWrite);
 		} while (failedServers.size() > 0);
@@ -163,10 +164,10 @@ public class QuorumServer extends ReplicaServer {
 
 	}
 
-	private void populatWriteQuorum(Integer articleId,
+	private int populatWriteQuorum(Integer articleId,
 			HashSet<Machine> successfulServers, HashSet<Machine> failedServers)
 			throws IOException {
-		CoordinatorClientCallFormatter.getArticleIdWithWriteQuorum(
+		return CoordinatorClientCallFormatter.getArticleIdWithWriteQuorum(
 				this.coordinatorMachine, articleId, successfulServers,
 				failedServers);
 	}

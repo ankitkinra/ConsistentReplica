@@ -3,6 +3,7 @@ package org.umn.distributed.consistent.server.coordinator;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
@@ -12,7 +13,7 @@ import org.umn.distributed.consistent.server.AbstractServer;
 
 public abstract class Coordinator extends AbstractServer {
 
-	private volatile int articleID = 1;
+	protected AtomicInteger articleID = new AtomicInteger(1);
 	protected HashMap<Integer, Integer> toRemoveList = new HashMap<Integer, Integer>();
 
 	protected Coordinator(STRATEGY strategy) {
@@ -27,11 +28,6 @@ public abstract class Coordinator extends AbstractServer {
 		} catch (Exception e) {
 			throw e;
 		}
-	}
-
-	protected synchronized int getArticleId() {
-		articleID = articleID + 1;
-		return articleID;
 	}
 
 	protected boolean checkIsAlive(Machine machine) {

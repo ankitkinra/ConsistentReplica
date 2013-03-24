@@ -94,14 +94,14 @@ public class CoordinatorClientCallFormatter {
 	 * Server sends back the pipeSeparated new machines
 	 * 
 	 * @param failedMachines
-	 * @param machineSeparatedByPipe
+	 * @param machineSeparatedBySemiColon
 	 *            with id Example = 1:111.43.24.1:5431|3:111.43.24.1:5432
 	 */
 	private static void parseAndSetMachines(Set<Machine> machineSetPut,
-			String machineSeparatedByPipe) {
+			String machineSeparatedBySemiColon) {
 		List<Machine> machines = new LinkedList<Machine>();
-		String[] pipeSeparated = machineSeparatedByPipe.split("\\|");
-		for (String server : pipeSeparated) {
+		String[] semiColonSeparated = machineSeparatedBySemiColon.split(";");
+		for (String server : semiColonSeparated) {
 			String[] serverAdd = server.split(":");
 			machines.add(new Machine(Integer.parseInt(serverAdd[0]),
 					serverAdd[1], Integer.parseInt(serverAdd[2])));

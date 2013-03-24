@@ -1,7 +1,6 @@
 package org.umn.distributed.consistent.server.quorum;
 
 import java.io.IOException;
-import java.security.acl.Owner;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,8 +20,8 @@ import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
 
 public class QuorumServer extends ReplicaServer {
-	private static final String READ_BB_COMMAND = "GET_BB";
-	private static final String READ_BB_COMMAND_COMPLETE = READ_BB_COMMAND
+	
+	private static final String READ_BB_COMMAND_COMPLETE = READ_QUORUM_COMMAND
 			+ "-FROM_ID=%%ARTICLE_ID%%";
 	private Integer lastSyncedId;
 	private Object syncLock = new Object();
@@ -97,7 +96,7 @@ public class QuorumServer extends ReplicaServer {
 		HashSet<Machine> successfulServers = new HashSet<Machine>();
 		HashSet<Machine> failedServers = new HashSet<Machine>();
 		HashMap<Machine, Boolean> writeStatus = new HashMap<Machine, Boolean>();
-		int articleId = -1;
+		int articleId = 0;
 		do {
 			try {
 				articleId = populatWriteQuorum(articleId, successfulServers,
@@ -128,6 +127,12 @@ public class QuorumServer extends ReplicaServer {
 		 */
 
 		if (failedServers != null) {
+			if(failedServers.contains(myInfo)){
+				// need to write local
+				write(aToWrite.toString());
+				successfulServers.add(myInfo);
+				failedServers.remove(myInfo);
+			}
 			List<WriteService> threadsToWrite = new ArrayList<WriteService>(
 					failedServers.size());
 			final CountDownLatch writeQuorumlatch = new CountDownLatch(
@@ -344,7 +349,7 @@ public class QuorumServer extends ReplicaServer {
 				logger.error("ReadServiceError", e);
 			}
 			logger.info(String.format("dataRead =%s from server = %s",
-					dataRead, serverToRead));
+					Utils.byteToString(dataRead), serverToRead));
 			latchToDecrement.countDown();
 		}
 
@@ -367,7 +372,7 @@ public class QuorumServer extends ReplicaServer {
 		@Override
 		public void run() {
 			try {
-				String command = WRITE_COMMAND + "-"
+				String command = WRITE_QUORUM_COMMAND + "-"
 						+ articleToWrite.toString();
 				dataRead = TCPClient.sendData(this.serverToWrite,
 						Utils.stringToByte(command, Props.ENCODING));
@@ -375,7 +380,7 @@ public class QuorumServer extends ReplicaServer {
 				logger.error("WriteServiceError", e);
 			}
 			logger.info(String.format("dataRead =%s from server = %s",
-					dataRead, serverToWrite));
+					Utils.byteToString(dataRead), serverToWrite));
 			latchToDecrement.countDown();
 		}
 	}

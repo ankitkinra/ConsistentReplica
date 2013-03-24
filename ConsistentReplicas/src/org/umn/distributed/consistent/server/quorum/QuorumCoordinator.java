@@ -52,6 +52,7 @@ public class QuorumCoordinator extends Coordinator {
 			 * req[1] == articleId req[2] == represents SuccessServers req[3] ==
 			 * represents FailedServers
 			 */
+			logger.info("GET_WRITE_QUORUM_COMMAND;request at QC="+request);
 			int i = 1;
 			String[] arrStr = req[i].split("=");
 			int sentMachineId = Integer.parseInt(arrStr[1]);
@@ -116,7 +117,7 @@ public class QuorumCoordinator extends Coordinator {
 
 	private byte[] getQuorumReturnMessage(String prefix,
 			Set<Machine> failedMachines) {
-		StringBuilder quorumResponse = new StringBuilder(prefix);
+		StringBuilder quorumResponse = new StringBuilder(prefix).append("F=");
 		for (Machine m : failedMachines) {
 			quorumResponse.append(m.getId()).append(":").append(m.getIP()).append(":").append(m.getPort())
 					.append(";");

@@ -11,11 +11,14 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.umn.distributed.consistent.common.LoggingUtils;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Utils;
 
 public abstract class AbstractServer implements TcpServerDelegate {
+	
 	protected Logger logger = Logger.getLogger(this.getClass());
 
 	public enum STRATEGY {

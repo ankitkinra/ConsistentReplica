@@ -186,21 +186,29 @@ public abstract class ReplicaServer extends AbstractServer {
 	public abstract String write(String req);
 
 	public byte[] handleRequest(byte[] request) {
-		String req = Utils.byteToString(request, Props.ENCODING);
+		String req = Utils.byteToString(request);
 		if (req.startsWith(HEARTBEAT_COMMAND)) {
-			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
+			logger.info(myInfo + " recieved heartbeat ping");
+			return Utils.stringToByte(COMMAND_SUCCESS);
 		} else if (req.startsWith(ADD_SERVER_COMMAND)) {
-			logger.info("In replica server at addServerCommand, req=" + req);
 			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
 					.length());
+			logger.debug("Adding " + req + " to known clients on "
+					+ this.myInfo);
 			Machine machineToAdd = Machine.parse(req);
 			this.addMachine(machineToAdd);
+			logger.info("Added " + req + " to known clients on " + this.myInfo);
 			return Utils.stringToByte(COMMAND_SUCCESS);
 		} else if (req.startsWith(REMOVE_SERVER_COMMAND)) {
-			this.removeMachine(Machine
-					.parse(req
-							.substring((REMOVE_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
-									.length())).getId());
+			req = req
+					.substring((REMOVE_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
+							.length());
+			logger.debug("Removing " + req + " from known clients on "
+					+ this.myInfo);
+			Machine machine = Machine.parse(req);
+			this.removeMachine(machine.getId());
+			logger.info("Removed " + req + " from known clients on "
+					+ this.myInfo);
 			return Utils.stringToByte(COMMAND_SUCCESS);
 		} else if (req.startsWith(START_ELECTION_COMMAND)) {
 			// TODO: handle election. SHould block all writes;

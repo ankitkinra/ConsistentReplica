@@ -18,7 +18,7 @@ import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.AbstractServer;
 
 public abstract class Coordinator extends AbstractServer {
-
+	
 	protected AtomicInteger articleID = new AtomicInteger(1);
 	protected HashMap<Integer, Integer> toRemoveList = new HashMap<Integer, Integer>();
 

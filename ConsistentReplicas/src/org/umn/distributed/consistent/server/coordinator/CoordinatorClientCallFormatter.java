@@ -1,7 +1,6 @@
 package org.umn.distributed.consistent.server.coordinator;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -114,8 +113,8 @@ public class CoordinatorClientCallFormatter {
 	}
 
 	public static void getReadQuorum(Machine coordinatorMachine,
-			Set<Machine> successMachines,
-			Set<Machine> failedMachines) throws IOException {
+			Set<Machine> successMachines, Set<Machine> failedMachines)
+			throws IOException {
 		String message = "RQ;" + "sm=" + SUCCESS_MACHINES_MSG_PLACEHOLDER
 				+ ";fm=" + FAILED_MACHINES_MSG_PLACEHOLDER;
 
@@ -146,6 +145,5 @@ public class CoordinatorClientCallFormatter {
 		}
 
 	}
-	
-	
+
 }

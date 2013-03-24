@@ -1,6 +1,5 @@
 package org.umn.distributed.consistent.server;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -103,7 +102,7 @@ public class TCPServer implements Runnable {
 				socket.getOutputStream().write(buffer);
 				is.close();
 				bos.close();
-				
+
 				// TODO:add specific handling for different exceptions types
 				// based on what exception is thrown when the remote client
 				// closes the

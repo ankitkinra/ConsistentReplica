@@ -1,6 +1,10 @@
 package org.umn.distributed.consistent.common;
 
+import org.apache.log4j.Logger;
+
 public class Machine {
+	protected Logger logger = Logger.getLogger(this.getClass());
+
 	public static final String FORMAT_START = "[";
 	public static final String FORMAT_END = "]";
 

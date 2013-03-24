@@ -31,8 +31,6 @@ public class QuorumServer extends ReplicaServer {
 	public QuorumServer(boolean isCoordinator, String coordinatorIP,
 			int coordinatorPort) {
 		super(STRATEGY.QUORUM, isCoordinator, coordinatorIP, coordinatorPort);
-		// start the sync thread
-		syncThread.start();
 		validateParameters();
 	}
 
@@ -46,7 +44,8 @@ public class QuorumServer extends ReplicaServer {
 		HashMap<Machine, String> responseMap = getBBFromReadQuorum();
 		// merge stage
 		mergeResponsesWithLocal(responseMap);
-		// doing this instead of calling sync as we want to wait on this operation
+		// doing this instead of calling sync as we want to wait on this
+		// operation
 		lastSyncedId = this.bb.getMaxId();
 	}
 
@@ -252,7 +251,7 @@ public class QuorumServer extends ReplicaServer {
 						TimeUnit.MILLISECONDS)) {
 					interruptReadThreads(threadsToRead);
 				}
-				
+
 				for (ReadService rs : threadsToRead) {
 					String str = null;
 
@@ -458,11 +457,30 @@ public class QuorumServer extends ReplicaServer {
 		}
 	}
 
+	protected void postRegister() {
+		// start the sync thread
+		syncThread.start();
+	}
+
 	protected void postUnRegister() {
 		this.syncThread.invokeShutdown();
 	}
 
 	public static void main(String[] args) {
-
+		/**
+		 * What all paramters are needed
+		 * 
+		 */
+		boolean isCoordinator = Boolean.parseBoolean(args[0]);
+		String coordinatorIP = args[1];
+		int coordinatorPort = Integer.parseInt(args[0]);
+		QuorumServer qs = new QuorumServer(isCoordinator, coordinatorIP,
+				coordinatorPort);
+		try {
+			qs.start();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

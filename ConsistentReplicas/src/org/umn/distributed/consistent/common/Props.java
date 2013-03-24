@@ -23,12 +23,17 @@ public class Props {
 	public static int REMOVE_INTERVAL;
 
 	public static int NETWORK_TIMEOUT;
+	
+	public static int QUORUM_SYNC_TIME_MILLIS = 5000;
 
+	static{
+		loadProperties();
+	}
 	public static void loadProperties() {
 		Properties prop = new Properties();
 		try {
 			prop.load(new FileInputStream("config.properties"));
-			ENCODING = prop.getProperty("encoding");
+			ENCODING = prop.getProperty("encoding","UTF8");
 
 			// TODO: validate the port numbers before using
 
@@ -58,6 +63,8 @@ public class Props {
 					.getProperty("deregisterInterval"));
 			NETWORK_TIMEOUT = Integer.parseInt(prop
 					.getProperty("totalNetworkTimeout"));
+			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop
+					.getProperty("totalNetworkTimeout", "5000"));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

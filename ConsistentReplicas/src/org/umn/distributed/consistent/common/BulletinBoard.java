@@ -7,7 +7,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -367,6 +370,44 @@ public class BulletinBoard {
 			}
 			replyList.add(id);
 		}
+	}
+
+	public List<Article> getArticlesFrom(int lastSyncArticleId) {
+		List<Article> articles = new LinkedList<Article>();
+		readL.lock();
+		try {
+			// we need articles from more than lastSyncArticleId, so base case
+			// is lastSyncArticleId == 0
+			Entry<Integer, BulletinBoardEntry> entry = map
+					.ceilingEntry(lastSyncArticleId + 1);
+			SortedMap<Integer,BulletinBoardEntry> tailMap = map.tailMap(entry.getKey());
+			
+			for(Entry<Integer, BulletinBoardEntry> entryItr : tailMap.entrySet()){
+				articles.add(entryItr.getValue().getArticle());
+			}
+		} finally {
+			readL.unlock();
+		}
+		return articles;
+	}
+
+	/**
+	 * expects articleString as article1;article2;..
+	 * @param articleListInString
+	 * @return
+	 */
+	public static BulletinBoard parseBBFromArticleList(String articleListInString) {
+		BulletinBoard bb = new BulletinBoard();
+		String[] articleList = articleListInString.split(";");
+		for(String art:articleList){
+			Article a = Article.parseArticle(art);
+			if(a.isRoot()){
+				bb.addArticle(a);
+			}else{
+				bb.addArticleReply(a);
+			}
+		}
+		return bb;
 	}
 
 }

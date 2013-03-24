@@ -1,6 +1,7 @@
 package org.umn.distributed.consistent.server.quorum;
 
 import java.io.IOException;
+import java.security.acl.Owner;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -101,14 +102,15 @@ public class QuorumServer extends ReplicaServer {
 			try {
 				articleId = populatWriteQuorum(articleId, successfulServers,
 						failedServers);
+				aToWrite.setId(articleId);
+				executeWriteRequestOnWriteQuorum(writeStatus,
+						successfulServers, failedServers, aToWrite);
 			} catch (IOException e) {
 				logger.error(
 						"Error in populating the quorum, no option but to try again",
 						e);
 			}
-			aToWrite.setId(articleId);
-			executeWriteRequestOnWriteQuorum(writeStatus, successfulServers,
-					failedServers, aToWrite);
+
 		} while (failedServers.size() > 0);
 
 		// once write is done just return
@@ -188,8 +190,8 @@ public class QuorumServer extends ReplicaServer {
 			HashSet<Machine> successfulServers, HashSet<Machine> failedServers)
 			throws IOException {
 		return CoordinatorClientCallFormatter.getArticleIdWithWriteQuorum(
-				this.coordinatorMachine, articleId, successfulServers,
-				failedServers);
+				this.myInfo, this.coordinatorMachine, articleId,
+				successfulServers, failedServers);
 	}
 
 	@Override
@@ -289,8 +291,8 @@ public class QuorumServer extends ReplicaServer {
 
 	private void populatReadQuorum(HashSet<Machine> successfulServers,
 			HashSet<Machine> failedServers) throws IOException {
-		CoordinatorClientCallFormatter.getReadQuorum(coordinatorMachine,
-				successfulServers, failedServers);
+		CoordinatorClientCallFormatter.getReadQuorum(this.myInfo,
+				coordinatorMachine, successfulServers, failedServers);
 
 	}
 
@@ -471,9 +473,10 @@ public class QuorumServer extends ReplicaServer {
 		 * What all paramters are needed
 		 * 
 		 */
-		boolean isCoordinator = Boolean.parseBoolean(args[0]);
-		String coordinatorIP = args[1];
-		int coordinatorPort = Integer.parseInt(args[2]);
+		Props.loadProperties(args[0]);
+		boolean isCoordinator = Boolean.parseBoolean(args[1]);
+		String coordinatorIP = args[2];
+		int coordinatorPort = Integer.parseInt(args[3]);
 		QuorumServer qs = new QuorumServer(isCoordinator, coordinatorIP,
 				coordinatorPort);
 		try {
@@ -482,7 +485,7 @@ public class QuorumServer extends ReplicaServer {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Article a = new Article(0,0,"t1","c1");
+		Article a = new Article(0, 0, "t1", "c1");
 		qs.post(a.toString());
 	}
 }

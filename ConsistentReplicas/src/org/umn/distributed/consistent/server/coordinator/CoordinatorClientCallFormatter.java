@@ -9,6 +9,7 @@ import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
+import org.umn.distributed.consistent.server.AbstractServer;
 
 public class CoordinatorClientCallFormatter {
 
@@ -36,27 +37,38 @@ public class CoordinatorClientCallFormatter {
 		return Integer.parseInt(idStr);
 	}
 
-	public static int getArticleIdWithWriteQuorum(Machine coordinatorMachine,
-			Integer articleId, Set<Machine> successMachines,
-			Set<Machine> failedMachines) throws IOException {
-		String message = "AWQ;aid=" + ARTICLE_ID_MSG_PLACEHOLDER + ";sm="
-				+ SUCCESS_MACHINES_MSG_PLACEHOLDER + ";fm="
-				+ FAILED_MACHINES_MSG_PLACEHOLDER;
+	/**
+	 * <pre>
+	 * return write quorum along with the article-id when required == 
+	 * GET_WRITE_QUORUM_COMMAND-M=1-A=i-S=id:a.b.c.d:i1|id:a.b.c.d:i2-F=id:a.b.c.d:i3
+	 * 
+	 * @param coordinatorMachine
+	 * @param articleId
+	 * @param successMachines
+	 * @param failedMachines
+	 * @return
+	 * @throws IOException
+	 */
+	public static int getArticleIdWithWriteQuorum(Machine ownMachine,
+			Machine coordinatorMachine, Integer articleId,
+			Set<Machine> successMachines, Set<Machine> failedMachines)
+			throws IOException {
+		StringBuilder writeQuorumMessage = new StringBuilder(
+				AbstractServer.GET_WRITE_QUORUM_COMMAND);
+		writeQuorumMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR)
+				.append("M=").append(ownMachine.getId());
+		writeQuorumMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR)
+				.append("A=").append(articleId);
+		writeQuorumMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR)
+				.append("S=").append(getMachinesToSendFormat(successMachines));
+		writeQuorumMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR)
+				.append("F=").append(getMachinesToSendFormat(failedMachines));
 
-		String successMachineStr = getMachinesToSendFormat(successMachines);
-		String failedMachineStr = getMachinesToSendFormat(failedMachines);
-
-		message = message.replaceAll(ARTICLE_ID_MSG_PLACEHOLDER,
-				String.valueOf(articleId));
-		message = message.replaceAll(SUCCESS_MACHINES_MSG_PLACEHOLDER,
-				successMachineStr);
-		message = message.replaceAll(FAILED_MACHINES_MSG_PLACEHOLDER,
-				failedMachineStr);
-		byte[] awqReturn = TCPClient.sendData(coordinatorMachine,
-				Utils.stringToByte(message, Props.ENCODING));
+		byte[] awqReturn = TCPClient.sendData(coordinatorMachine, Utils
+				.stringToByte(writeQuorumMessage.toString(), Props.ENCODING));
 		// we will modify the variables sent to us
 		String awqStr = Utils.byteToString(awqReturn, Props.ENCODING);
-
+		// return expected as "RMQ;<server1>;<server2>;..
 		String[] brokenOnSemiColon = awqStr.split(";");
 		for (int i = 1; i < brokenOnSemiColon.length; i++) {
 
@@ -83,7 +95,7 @@ public class CoordinatorClientCallFormatter {
 	 * 
 	 * @param failedMachines
 	 * @param machineSeparatedByPipe
-	 *            Example = 111.43.24.1:5431|111.43.24.1:5432
+	 *            with id Example = 1:111.43.24.1:5431|3:111.43.24.1:5432
 	 */
 	private static void parseAndSetMachines(Set<Machine> machineSetPut,
 			String machineSeparatedByPipe) {
@@ -91,8 +103,8 @@ public class CoordinatorClientCallFormatter {
 		String[] pipeSeparated = machineSeparatedByPipe.split("\\|");
 		for (String server : pipeSeparated) {
 			String[] serverAdd = server.split(":");
-			machines.add(new Machine(serverAdd[0], Integer
-					.parseInt(serverAdd[1])));
+			machines.add(new Machine(Integer.parseInt(serverAdd[0]),
+					serverAdd[1], Integer.parseInt(serverAdd[2])));
 
 		}
 		// if all well
@@ -105,28 +117,36 @@ public class CoordinatorClientCallFormatter {
 		StringBuilder sb = new StringBuilder("");
 		for (Machine server : machineSet) {
 
-			sb.append(server.getIP()).append(":").append(server.getPort())
-					.append("|");
+			sb.append(server.getId()).append(":").append(server.getIP())
+					.append(":").append(server.getPort()).append("|");
 
 		}
 		return sb.toString();
 	}
 
-	public static void getReadQuorum(Machine coordinatorMachine,
-			Set<Machine> successMachines, Set<Machine> failedMachines)
-			throws IOException {
-		String message = "RQ;" + "sm=" + SUCCESS_MACHINES_MSG_PLACEHOLDER
-				+ ";fm=" + FAILED_MACHINES_MSG_PLACEHOLDER;
-
-		String successMachineStr = getMachinesToSendFormat(successMachines);
-		String failedMachineStr = getMachinesToSendFormat(failedMachines);
-
-		message = message.replaceAll(SUCCESS_MACHINES_MSG_PLACEHOLDER,
-				successMachineStr);
-		message = message.replaceAll(FAILED_MACHINES_MSG_PLACEHOLDER,
-				failedMachineStr);
+	/**
+	 * <pre>
+	 * Calls expected as :
+	 * 1) return read quorum == GET_READ_QUORUM_COMMAND-M=1-S=id:a.b.c.d:i1|id:a.b.c.d:i2-F=id:a.b.c.d:i3
+	 * 2) return write quorum along with the article-id when required == WQ-M=1-A=i-S=id:a.b.c.d:i1|id:a.b.c.d:i2-F=id:a.b.c.d:i3
+	 * @param coordinatorMachine
+	 * @param successMachines
+	 * @param failedMachines
+	 * @throws IOException
+	 */
+	public static void getReadQuorum(Machine ownMachine,
+			Machine coordinatorMachine, Set<Machine> successMachines,
+			Set<Machine> failedMachines) throws IOException {
+		StringBuilder readMessage = new StringBuilder(
+				AbstractServer.GET_READ_QUORUM_COMMAND);
+		readMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR).append("M=")
+				.append(ownMachine.getId());
+		readMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR).append("S=")
+				.append(getMachinesToSendFormat(successMachines));
+		readMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR).append("F=")
+				.append(getMachinesToSendFormat(failedMachines));
 		byte[] rqReturn = TCPClient.sendData(coordinatorMachine,
-				Utils.stringToByte(message, Props.ENCODING));
+				Utils.stringToByte(readMessage.toString(), Props.ENCODING));
 		// we will modify the variables sent to us
 		String rqStr = Utils.byteToString(rqReturn, Props.ENCODING);
 

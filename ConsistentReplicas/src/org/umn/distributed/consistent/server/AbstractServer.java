@@ -2,7 +2,9 @@ package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -32,10 +34,13 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected static final String COMMAND_SUCCESS = "SUCCESS";
 	protected static final String COMMAND_FAILED = "FAILED";
 
-	protected static final String READ_QUORUM_COMMAND = "RQ";
-	protected static final String WRITE_QUORUM_COMMAND = "WQ";
+	public static final String READ_QUORUM_COMMAND = "RQ";
+	public static final String WRITE_QUORUM_COMMAND = "WQ";
+	
+	public static final String GET_READ_QUORUM_COMMAND = "GRQ";
+	public static final String GET_WRITE_QUORUM_COMMAND = "GWQ";
 
-	protected static final String COMMAND_PARAM_SEPARATOR = "-";
+	public static final String COMMAND_PARAM_SEPARATOR = "-";
 	private TCPServer tcpServer;
 	protected int port;
 	protected Machine myInfo;
@@ -72,8 +77,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected Machine addMachine(Machine machine) {
 		writeL.lock();
 		try {
-			Machine m = this.knownClients.put(machine.getId(), machine);
-			return m;
+			return this.knownClients.put(machine.getId(), machine);
 		} finally {
 			writeL.unlock();
 		}

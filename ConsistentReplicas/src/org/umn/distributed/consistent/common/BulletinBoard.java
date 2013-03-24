@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class BulletinBoard {
 
+	private static final int BASE_ARTICLE_ID = 0;
 	public static final String FORMAT_START = "{";
 	public static final String FORMAT_ENDS = "}";
 	// TODO need to protect this map under ReentrantReadWriteLock
@@ -113,7 +114,11 @@ public class BulletinBoard {
 	public Integer getMaxId() {
 		readL.lock();
 		try {
-			return map.lastEntry().getKey();
+			if (map.size() > 0) {
+				return map.lastEntry().getKey();
+			} else {
+				return BASE_ARTICLE_ID;
+			}
 		} finally {
 			readL.unlock();
 		}

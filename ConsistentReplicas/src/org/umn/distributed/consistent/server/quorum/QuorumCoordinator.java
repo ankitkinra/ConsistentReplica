@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 import org.umn.distributed.consistent.common.Machine;
+import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
@@ -31,7 +32,7 @@ public class QuorumCoordinator extends Coordinator {
 	@Override
 	public byte[] handleSpecificRequest(String request) {
 		String[] req = request.split(COMMAND_PARAM_SEPARATOR);
-		if (request.startsWith(READ_QUORUM_COMMAND)) {
+		if (request.startsWith(GET_READ_QUORUM_COMMAND)) {
 			/**
 			 * req[1] == represents SuccessServers req[2] == represents
 			 * FailedServers
@@ -46,7 +47,7 @@ public class QuorumCoordinator extends Coordinator {
 			failedServers = parseServers(splitArr, 1);
 			getReadQuorum(sentMachineId, successServers, failedServers);
 			return getReadQuorumMessage(failedServers);
-		} else if (request.startsWith(WRITE_QUORUM_COMMAND)) {
+		} else if (request.startsWith(GET_WRITE_QUORUM_COMMAND)) {
 			/**
 			 * req[1] == articleId req[2] == represents SuccessServers req[3] ==
 			 * represents FailedServers
@@ -117,7 +118,7 @@ public class QuorumCoordinator extends Coordinator {
 			Set<Machine> failedMachines) {
 		StringBuilder quorumResponse = new StringBuilder(prefix);
 		for (Machine m : failedMachines) {
-			quorumResponse.append(m.getIP()).append(":").append(m.getPort())
+			quorumResponse.append(m.getId()).append(":").append(m.getIP()).append(":").append(m.getPort())
 					.append(";");
 		}
 		return Utils.stringToByte(quorumResponse.toString());
@@ -210,14 +211,16 @@ public class QuorumCoordinator extends Coordinator {
 	}
 
 	public static void main(String[] args) {
+		Props.loadProperties("C:\\Users\\akinra\\git\\ConsistentReplica\\ConsistentReplicas\\config.properties");
+		System.out.println(Props.ENCODING);
 		QuorumCoordinator qc = new QuorumCoordinator();
 		for (int i = 0; i < 10; i++) {
 			Machine m = new Machine(i, i + "." + i + "." + i + "." + i, i);
 			qc.addMachine(m);
 		}
 
-		String readQrqst = "RQ-M=4-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
-		String writeQrqst = "WQ-M=4-A=0-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
+		String readQrqst = GET_READ_QUORUM_COMMAND+"-M=4-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
+		String writeQrqst = GET_WRITE_QUORUM_COMMAND+"-M=4-A=0-S=1:1.1.1.1:1|2:2.2.2.2:2|-F=";
 		System.out.println(Utils.byteToString(qc
 				.handleSpecificRequest(readQrqst)));
 		System.out.println(Utils.byteToString(qc

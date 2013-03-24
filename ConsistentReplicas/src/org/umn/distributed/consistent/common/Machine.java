@@ -1,5 +1,8 @@
 package org.umn.distributed.consistent.common;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import org.apache.log4j.Logger;
 
 public class Machine {
@@ -125,5 +128,18 @@ public class Machine {
 		} catch (NumberFormatException nfe) {
 			throw new IllegalArgumentException("Invalid article id/parentId");
 		}
+	}
+
+	public static List<Machine> parseList(String req) {
+		List<Machine> listMachines = new LinkedList<Machine>();
+		int index = -1;
+		int start = 0;
+		while((index = req.indexOf("]", start)) > -1) {
+			Machine machine = Machine.parse(req.substring(start, index + 1));
+			listMachines.add(machine);
+			start = index + 1;
+			
+		}
+		return listMachines;
 	}
 }

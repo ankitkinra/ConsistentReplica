@@ -7,6 +7,9 @@ import java.util.Properties;
 public class Props {
 	public static String ENCODING;
 
+	public static int WRITER_SERVER_THREADS;
+	public static int READER_SERVER_THREADS;
+
 	public static int SERVER_EXTERNAL_PORT;
 	public static int EXTERNAL_SERVER_THREADS;
 
@@ -28,6 +31,12 @@ public class Props {
 			ENCODING = prop.getProperty("encoding");
 
 			// TODO: validate the port numbers before using
+
+			READER_SERVER_THREADS = Integer.parseInt(prop
+					.getProperty("serverWriterThreads"));
+			WRITER_SERVER_THREADS = Integer.parseInt(prop
+					.getProperty("serverReaderThreads"));
+
 			SERVER_EXTERNAL_PORT = Integer.parseInt(prop
 					.getProperty("serverExternalPort"));
 			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop

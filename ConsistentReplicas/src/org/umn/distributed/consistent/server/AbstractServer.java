@@ -2,8 +2,11 @@ package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
@@ -79,16 +82,21 @@ public abstract class AbstractServer implements TcpServerDelegate {
 		}
 	}
 
-	protected List<Machine> getMachineList() {
+	protected Set<Machine> getMachineList() {
+		Set<Machine> machineSet = new HashSet<Machine>();
 		readL.lock();
 		try {
-			return getTailList(this.knownClients.lastKey());
-		}
-		finally {
+			Collection<Machine> machines = this.knownClients.values();
+			Iterator<Machine> it = machines.iterator();
+			while (it.hasNext()) {
+				machineSet.add(it.next());
+			}
+		} finally {
 			readL.unlock();
 		}
+		return machineSet;
 	}
-	
+
 	protected List<Machine> getTailList(int id) {
 		List<Machine> list = new ArrayList<Machine>();
 		readL.lock();

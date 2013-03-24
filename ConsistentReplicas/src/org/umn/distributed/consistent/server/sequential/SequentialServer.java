@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.umn.distributed.consistent.common.Article;
@@ -13,9 +15,13 @@ import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
+import org.umn.distributed.consistent.server.TCPServer.Handler;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class SequentialServer extends ReplicaServer {
+
+	private ExecutorService executerService = Executors.newFixedThreadPool(Props.WRITER_SERVER_THREADS);
+
 	public SequentialServer(boolean isCoordinator, String coordinatorIP,
 			int coordinatorPort) {
 		super(STRATEGY.SEQUENTIAL, isCoordinator, coordinatorIP,
@@ -77,13 +83,10 @@ public class SequentialServer extends ReplicaServer {
 		return COMMAND_FAILED + "-" + "Failed writing the article";
 	}
 
-	private boolean writeToReplicas(HashMap<Machine, Boolean> writeStatus, List<Machine> failedServers, Article aToWrite) {
-	if (failedServers != null) {
-		List<WriteService> threadsToWrite = new ArrayList<WriteService>(
-				failedServers.size());
+	private boolean writeToReplicas(HashMap<Machine, Boolean> writeStatus, List<Machine> failedServers, Article article) {
 		final CountDownLatch writelatch = new CountDownLatch(
 				failedServers.size());
-
+		List<Machine> serverList = getMachineList();
 		for (Machine server : failedServers) {
 			WriteService t = new WriteService(server, aToWrite,
 					writelatch);

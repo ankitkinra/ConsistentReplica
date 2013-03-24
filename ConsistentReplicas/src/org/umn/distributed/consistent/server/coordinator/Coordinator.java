@@ -61,6 +61,7 @@ public abstract class Coordinator extends AbstractServer {
 					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length()));
 			machineToAdd.setid(knownMachineID.getAndIncrement());
+			builder.append(COMMAND_PARAM_SEPARATOR).append(machineToAdd.getId()).append(COMMAND_PARAM_SEPARATOR);
 			logger.info(machineToAdd
 					+ " trying to register with the coordinator");
 			List<UpdaterThread> threads = new ArrayList<UpdaterThread>();
@@ -92,7 +93,7 @@ public abstract class Coordinator extends AbstractServer {
 				logger.error("Updater latch interrupted", ie);
 			}
 			this.addMachine(machineToAdd);
-			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + builder.toString());
+			return Utils.stringToByte(COMMAND_SUCCESS + builder.toString());
 		}
 		return handleSpecificRequest(reqStr);
 	}

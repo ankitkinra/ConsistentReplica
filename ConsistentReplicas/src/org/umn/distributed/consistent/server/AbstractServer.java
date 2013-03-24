@@ -11,14 +11,12 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.umn.distributed.consistent.common.LoggingUtils;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Utils;
 
 public abstract class AbstractServer implements TcpServerDelegate {
-	
+
 	protected Logger logger = Logger.getLogger(this.getClass());
 
 	public enum STRATEGY {
@@ -59,20 +57,18 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	}
 
 	public void start() throws Exception {
-		logger.debug("starting server");
+		logger.info("****************Starting Server****************");
 		try {
 			this.port = this.tcpServer.startListening(this.port);
-			// TODO: Add id once you get it form server
 			myInfo = new Machine(Utils.getLocalServerIp(), this.port);
 			startSpecific();
 		} catch (IOException ioe) {
-			logger.debug("Error starting server. Stopping now");
+			logger.error("Error starting tcp server. Stopping now", ioe);
 			this.stop();
-			logger.error("Error starting tcp server", ioe);
 			throw ioe;
 		}
 	}
-
+	
 	public abstract void startSpecific() throws Exception;
 
 	protected Machine addMachine(Machine machine) {

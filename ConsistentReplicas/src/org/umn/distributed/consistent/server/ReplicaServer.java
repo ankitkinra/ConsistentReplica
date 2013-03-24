@@ -3,9 +3,7 @@ package org.umn.distributed.consistent.server;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.log4j.Level;
 import org.umn.distributed.consistent.common.BulletinBoard;
-import org.umn.distributed.consistent.common.LoggingUtils;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
@@ -50,12 +48,14 @@ public abstract class ReplicaServer extends AbstractServer {
 		logger.debug("Starting coordinator");
 		try {
 			this.coordinatorServer = createCoordinator();
+			logger.debug("****************Starting Coordinator****************");
 			this.coordinatorServer.start();
 			int port = coordinatorServer.getInternalPort();
 			this.coordinatorMachine.setPort(port);
-			logger.debug("Coordinator started");
+			logger.info("****************Coordinator "
+					+ this.coordinatorMachine + " started");
 		} catch (Exception e) {
-			logger.error("Unable to start coordinator", e);
+			logger.error("Unable to start coordinator. Stopping coordinator", e);
 			this.coordinatorServer.stop();
 			throw e;
 		}
@@ -72,13 +72,14 @@ public abstract class ReplicaServer extends AbstractServer {
 
 	@Override
 	public void startSpecific() throws Exception {
-		logger.debug("Start replica server");
+		logger.debug("Starting replica server");
 		try {
 			preRegister();
 			register();
 			postRegister();
 		} catch (Exception e) {
-			logger.error("Failed to registerer to " + coordinatorMachine, e);
+			logger.error("Failed to register " + myInfo + " to "
+					+ coordinatorMachine, e);
 			// TODO: fix it
 			// stop();
 			throw e;
@@ -90,33 +91,38 @@ public abstract class ReplicaServer extends AbstractServer {
 		if (this.coordinator) {
 			startCoordinator();
 		}
+		logger.debug("Starting external listener for " + this.myInfo);
 		int port = this.externalTcpServer
 				.startListening(Props.SERVER_EXTERNAL_PORT);
 		this.myInfo.setExternalPort(port);
+		logger.info("External listener started at port " + port + " for "
+				+ this.myInfo);
 	}
 
 	protected void register() throws Exception {
-		logger.debug("Registering machine to coordinator");
+		logger.info("Registering " + this.myInfo + " to coordinator "
+				+ this.coordinatorMachine);
 		String registerMessage = createRegisterMessage();
 		byte resp[] = TCPClient.sendData(coordinatorMachine,
 				Utils.stringToByte(registerMessage, Props.ENCODING));
 		String respStr = Utils.byteToString(resp, Props.ENCODING);
 		if (!respStr.startsWith(COMMAND_SUCCESS)) {
+			logger.error("Error getting the updated known client list from coordinator");
 			throw new Exception("Coordinator rejected to register the replica");
 		} else {
 			String respParams[] = respStr.split(COMMAND_PARAM_SEPARATOR);
 			this.myInfo.setid(Integer.parseInt(respParams[1]));
+			logger.info("Updated " + myInfo + " with new id");
 			if (respParams.length > 2) {
 				List<Machine> toAdd = Machine.parseList(respParams[1]);
 				for (Machine m : toAdd) {
 					this.addMachine(m);
-					logger.info("Added replica " + m + " to known machine list");
+					logger.info("Added replica " + m + " to known machine in "
+							+ myInfo);
 				}
 			}
 		}
-		LoggingUtils.addSpecificFileAppender(getClass(), "logs\\",
-				this.myInfo.getId() + "", Level.DEBUG);
-		logger.info("Registered to coordinator " + coordinatorMachine);
+		logger.info(myInfo + " registered to coordinator " + coordinatorMachine);
 	}
 
 	protected void postRegister() throws IOException {

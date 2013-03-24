@@ -1,6 +1,7 @@
 package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
@@ -36,7 +37,7 @@ public abstract class ReplicaServer extends AbstractServer {
 		this.coordinator = isCoordinator;
 		if (this.coordinator) {
 			coordinatorIP = Utils.getLocalServerIp();
-			logger.debug("############coordinatorIP="+coordinatorIP);
+			logger.debug("############coordinatorIP=" + coordinatorIP);
 			coordinatorPort = Props.COORDINATOR_PORT;
 		}
 		// TODO: set id
@@ -100,18 +101,14 @@ public abstract class ReplicaServer extends AbstractServer {
 		String respStr = Utils.byteToString(resp, Props.ENCODING);
 		if (!respStr.startsWith(COMMAND_SUCCESS)) {
 			throw new Exception("Coordinator rejected to register the replica");
-		}
-		else {
+		} else {
 			String respParams[] = respStr.split(COMMAND_PARAM_SEPARATOR);
 			this.myInfo.setid(Integer.parseInt(respParams[1]));
-			if(respParams.length > 2) {
-				int index = -1;
-				int start = 0;
-				while((index = respParams[1].indexOf("]", start)) > -1) {
-					Machine machine = Machine.parse(respParams[2].substring(start, index + 1));
-					this.addMachine(machine);
-					start = index + 1;
-					logger.info("Added replica " + machine + " to known machine list");
+			if (respParams.length > 2) {
+				List<Machine> toAdd = Machine.parseList(respParams[1]);
+				for (Machine m : toAdd) {
+					this.addMachine(m);
+					logger.info("Added replica " + m + " to known machine list");
 				}
 			}
 		}
@@ -129,7 +126,7 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	protected void preUnRegister() {
-    
+
 	}
 
 	protected void unRegister() {
@@ -183,8 +180,9 @@ public abstract class ReplicaServer extends AbstractServer {
 		if (req.startsWith(HEARTBEAT_COMMAND)) {
 			return Utils.stringToByte(COMMAND_SUCCESS, Props.ENCODING);
 		} else if (req.startsWith(ADD_SERVER_COMMAND)) {
-			logger.info("In replica server at addServerCommand, req="+req);
-			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR).length());
+			logger.info("In replica server at addServerCommand, req=" + req);
+			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
+					.length());
 			Machine machineToAdd = Machine.parse(req);
 			this.addMachine(machineToAdd);
 			return Utils.stringToByte(COMMAND_SUCCESS);

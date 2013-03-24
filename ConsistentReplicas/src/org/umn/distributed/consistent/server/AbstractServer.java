@@ -2,9 +2,7 @@ package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -36,7 +34,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 
 	public static final String READ_QUORUM_COMMAND = "RQ";
 	public static final String WRITE_QUORUM_COMMAND = "WQ";
-	
+
 	public static final String GET_READ_QUORUM_COMMAND = "GRQ";
 	public static final String GET_WRITE_QUORUM_COMMAND = "GWQ";
 

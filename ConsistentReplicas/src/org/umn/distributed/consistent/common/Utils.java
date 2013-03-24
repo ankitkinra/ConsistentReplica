@@ -83,11 +83,9 @@ public class Utils {
 			Enumeration<NetworkInterface> en = NetworkInterface
 					.getNetworkInterfaces();
 			while (en.hasMoreElements()) {
-				logger.debug("NetworkInterface has next element");
 				NetworkInterface intf = en.nextElement();
 				Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses();
 				while (enumIpAddr.hasMoreElements()) {
-					logger.debug("InetAddress has next element");
 					InetAddress inetAddress = enumIpAddr.nextElement();
 					if (!inetAddress.isLoopbackAddress()
 							&& !inetAddress.isLinkLocalAddress()) {

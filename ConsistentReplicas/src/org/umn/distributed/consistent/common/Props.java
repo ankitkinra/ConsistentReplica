@@ -29,7 +29,8 @@ public class Props {
 	static{
 		loadProperties();
 	}
-	public static void loadProperties() {
+	
+	private static void loadProperties() {
 		Properties prop = new Properties();
 		try {
 			prop.load(new FileInputStream("config.properties"));

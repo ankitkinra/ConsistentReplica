@@ -26,10 +26,10 @@ public class Props {
 	
 	public static int QUORUM_SYNC_TIME_MILLIS = 5000;
 
-	static{
-		loadProperties("config.properties");
-	}
-	
+//	static{
+//		loadProperties("config.properties");
+//	}
+//	
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {

@@ -7,6 +7,7 @@ public class ConsistentReplica {
 
 	public static void main(String[] args) {
 		// TODO: add actual command line parameters
+		Props.loadProperties(args[0]);
 		ReplicaServer replicaServer = new SequentialServer(true, null, 0);
 		try {
 			replicaServer.start();

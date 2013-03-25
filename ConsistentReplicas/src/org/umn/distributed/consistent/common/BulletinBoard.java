@@ -243,8 +243,6 @@ public class BulletinBoard {
 	 */
 	public static BulletinBoard mergeBB(BulletinBoard bbToMergeIn,
 			BulletinBoard bbTwo) {
-		assert (false);
-
 		if (bbToMergeIn == null) {
 			bbToMergeIn = bbTwo;
 		} else {

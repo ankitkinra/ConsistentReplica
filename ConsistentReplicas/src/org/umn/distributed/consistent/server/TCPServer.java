@@ -20,6 +20,7 @@ public class TCPServer implements Runnable {
 	private ExecutorService executerService;
 	private ServerSocket serverSocket;
 	private Thread thread;
+	private boolean running = true;
 
 	public TCPServer(TcpServerDelegate delegate, int numThreads) {
 		this.delegate = delegate;
@@ -31,7 +32,7 @@ public class TCPServer implements Runnable {
 		port = Utils.findFreePort(port);
 		this.serverSocket = new ServerSocket(port);
 		this.executerService = Executors.newFixedThreadPool(numThreads);
-		this.thread = new Thread(this);
+		this.thread = new Thread(this, "TCPServerThread");
 		this.thread.start();
 		return port;
 	}
@@ -40,7 +41,7 @@ public class TCPServer implements Runnable {
 	public void run() {
 		logger.debug("Started tcpServer on port:"
 				+ this.serverSocket.getLocalPort());
-		while (true) {
+		while (running) {
 			try {
 				this.executerService
 						.execute(new Handler(serverSocket.accept()));
@@ -53,6 +54,7 @@ public class TCPServer implements Runnable {
 	public void stop() {
 		logger.debug("Stopping TcpServer on port:"
 				+ this.serverSocket.getLocalPort());
+		this.running = false;
 		try {
 			this.serverSocket.close();
 		} catch (IOException ioe) {

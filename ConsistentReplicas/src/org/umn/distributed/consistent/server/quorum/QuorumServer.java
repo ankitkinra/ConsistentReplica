@@ -42,14 +42,24 @@ public class QuorumServer extends ReplicaServer {
 		 * with merged bb : shadow copying in a syncronized method
 		 * 
 		 */
-		HashMap<Machine, String> responseMap = getBBFromReadQuorum(lastSyncedId);
-		// merge stage
-		logger.info("from syncBB lastSyncedId=" + lastSyncedId + ";response="
-				+ responseMap);
-		mergeResponsesWithLocal(responseMap);
-		// doing this instead of calling sync as we want to wait on this
-		// operation
-		lastSyncedId = this.bb.getMaxId();
+		HashMap<Machine, String> responseMap;
+		try {
+			responseMap = getBBFromReadQuorum(lastSyncedId);
+			// merge stage
+			logger.info("from syncBB lastSyncedId=" + lastSyncedId
+					+ ";response=" + responseMap);
+			mergeResponsesWithLocal(responseMap);
+			// doing this instead of calling sync as we want to wait on this
+			// operation
+
+			lastSyncedId = this.bb.getMaxId();
+			logger.info("$$$$$$$After Sync bb=" + this.bb.toString()
+					+ ";\nlastSyncedId=" + lastSyncedId);
+
+		} catch (IOException e) {
+			logger.error("Maybe the coordinator has died", e);
+			this.stop();
+		}
 	}
 
 	private void mergeResponsesWithLocal(HashMap<Machine, String> responseMap) {
@@ -57,14 +67,31 @@ public class QuorumServer extends ReplicaServer {
 		boolean first = true;
 		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
 			// get BB from string
+			if (Utils.isEmpty(machineBBStr.getValue())) {
+				logger.warn("Skipping BB String as it is Empty; "
+						+ machineBBStr.getValue());
+				continue;
+			}
 			if (first) {
+
+				String articles = machineBBStr.getValue().substring(
+						READ_QUORUM_RESPONSE.length()
+								+ COMMAND_PARAM_SEPARATOR.length());
+				logger.info("Sending for parse = " + articles);
 				mergedBulletinBoard = BulletinBoard
-						.parseBBFromArticleList(machineBBStr.getValue());
+						.parseBBFromArticleList(articles);
 				first = false;
+
 			} else {
+				String articles = machineBBStr.getValue().substring(
+						READ_QUORUM_RESPONSE.length()
+								+ COMMAND_PARAM_SEPARATOR.length());
+				logger.info("Sending for parse = " + articles);
 				BulletinBoard bbThis = BulletinBoard
-						.parseBBFromArticleList(machineBBStr.getValue());
+						.parseBBFromArticleList(articles);
 				// now merge
+				logger.info("Two bbs to merge = " + mergedBulletinBoard
+						+ "\nTwo=" + bbThis);
 				mergedBulletinBoard = BulletinBoard.mergeBB(
 						mergedBulletinBoard, bbThis);
 			}
@@ -119,8 +146,9 @@ public class QuorumServer extends ReplicaServer {
 								successfulServers, failedServers, aToWrite);
 					} catch (IOException e) {
 						logger.error(
-								"Error in populating the quorum, no option but to try again",
+								"Error in population of writeQuorum , Maybe the coordinator has died",
 								e);
+						this.stop();
 					}
 					waitIfFailedServers(failedServers);
 				} while (failedServers.size() > 0);
@@ -223,17 +251,30 @@ public class QuorumServer extends ReplicaServer {
 	@Override
 	public String readItemList(String articleReadFrom) {
 
-		HashMap<Machine, String> responseMap = getBBFromReadQuorum(Integer
-				.parseInt(articleReadFrom));
+		HashMap<Machine, String> responseMap;
+		try {
+			responseMap = getBBFromReadQuorum(Integer.parseInt(articleReadFrom));
+			mergeResponsesWithLocal(responseMap);
+			syncThread.resetTimer();
+			return bb.toString();
+		} catch (NumberFormatException e) {
+			/**
+			 * Article writing failed, maybe coordinator has failed
+			 */
+			logger.error("Maybe the coordinator has died", e);
+			this.stop();
+		} catch (IOException e) {
+			logger.error("Maybe the coordinator has died", e);
+			this.stop();
+		}
+		return null;
 
 		// once we have populated and know that required quorum was achieved
 
-		mergeResponsesWithLocal(responseMap);
-		syncThread.resetTimer();
-		return bb.toString();
 	}
 
-	private HashMap<Machine, String> getBBFromReadQuorum(int articleReadFrom) {
+	private HashMap<Machine, String> getBBFromReadQuorum(int articleReadFrom)
+			throws IOException {
 		/**
 		 * Any request can be modelled as <code>
 		 * 
@@ -255,6 +296,7 @@ public class QuorumServer extends ReplicaServer {
 						failedServers, articleReadFrom);
 			} catch (IOException e) {
 				logger.error("quorum popualtion failed", e);
+				throw e;
 			}
 			waitIfFailedServers(failedServers);
 		} while (failedServers.size() > 0);
@@ -267,10 +309,10 @@ public class QuorumServer extends ReplicaServer {
 			 * introduce a timeout, so that the coordinator gets a chance to
 			 * remove the server via the heartbeat
 			 */
-			logger.info("Thread will wait = "
+			logger.info("Thread will sleep = "
 					+ Thread.currentThread().getName());
 			try {
-				wait(Props.HEARTBEAT_INTERVAL);
+				Thread.sleep(Props.HEARTBEAT_INTERVAL);
 			} catch (InterruptedException e) {
 				logger.warn("Got interrupted, will continue");
 			}
@@ -562,8 +604,7 @@ public class QuorumServer extends ReplicaServer {
 	protected void postUnRegister() {
 		// need to shutdown the TCPServer / TCP Client
 		super.postUnRegister();
-		this.syncThread.invokeShutdown();
-		this.syncThread.interrupt();
+		stop();
 	}
 
 	public static void main(String[] args) {
@@ -587,5 +628,12 @@ public class QuorumServer extends ReplicaServer {
 			e.printStackTrace();
 		}
 
+	}
+	
+	public void stop() {
+		super.stop();
+		this.externalTcpServer.stop();
+		this.syncThread.invokeShutdown();
+		this.syncThread.interrupt();
 	}
 }

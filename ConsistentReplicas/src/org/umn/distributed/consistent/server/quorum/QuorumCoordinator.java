@@ -142,6 +142,7 @@ public class QuorumCoordinator extends Coordinator {
 		 */
 		readL.lock();
 		try {
+			logger.debug("Current knownMachine =" + knownClients.toString());
 			Machine sendMachine = knownClients.get(ownMachineId);
 			int totalQSize = knownClients.size();
 			int[] rwQSize = getReadWriteQSize(totalQSize);
@@ -157,6 +158,9 @@ public class QuorumCoordinator extends Coordinator {
 					: (quorumSizeToReturn - successMachines.size());
 			// get set of knownMachines and remove successMachines and
 			// failedMachines
+			logger.debug(String.format(
+					"getQuorum; machinesToReturn = %s; quorumSizeToReturn=%s",
+					machinesToReturn, quorumSizeToReturn));
 			if (machinesToReturn > 0) {
 				Set<Machine> knownMachineSet = getKnownMachineSet();
 				knownMachineSet.removeAll(successMachines);
@@ -189,7 +193,31 @@ public class QuorumCoordinator extends Coordinator {
 						Collections.shuffle(machineList);
 						failedMachines.add(machineList.poll());
 					}
+				} else {
+					/**
+					 * this means that after removing the failed set we are not
+					 * able to support the read/write request, this would
+					 * typically mean that replica has found out that a
+					 * particular server is not responding but our heartbeat
+					 * mechanism has still to figure that out The best way to
+					 * handle that is to block this client for sometime so that
+					 * the heartbeat might get activated, or allow the client to
+					 * come back with the same failed Server
+					 * 
+					 */
+					try {
+						logger.info("Sleeping for HEARTBEAT interval = "
+								+ Props.HEARTBEAT_INTERVAL);
+						Thread.sleep(Props.HEARTBEAT_INTERVAL);
+					} catch (InterruptedException e) {
+						logger.error("Sleep interrupted", e);
+					}
 				}
+			} else {
+				// if no more machines to send then we need to clear out
+				// failedSet
+				// as read or write requirement is complete
+				failedMachines.clear();
 			}
 
 		} finally {

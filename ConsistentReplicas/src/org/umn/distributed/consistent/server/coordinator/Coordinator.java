@@ -75,9 +75,11 @@ public abstract class Coordinator extends AbstractServer {
 	protected class HeartBeat extends Thread {
 		@Override
 		public void run() {
+			List<PingThread> threads;
+			Set<Machine> currentMachines;
 			while (true) {
-				List<PingThread> threads = new ArrayList<PingThread>();
-				Set<Machine> currentMachines = getMachineList();
+				threads = new ArrayList<PingThread>();
+				currentMachines = getMachineList();
 				CountDownLatch latch = new CountDownLatch(
 						currentMachines.size());
 				for (Machine currMachine : currentMachines) {
@@ -89,7 +91,7 @@ public abstract class Coordinator extends AbstractServer {
 				try {
 					latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 					for (PingThread t : threads) {
-						if(t.isAlive()) {
+						if (t.isAlive()) {
 							t.interrupt();
 						}
 						if (t.dataRead == null
@@ -104,6 +106,11 @@ public abstract class Coordinator extends AbstractServer {
 					sleep(Props.HEARTBEAT_INTERVAL);
 				} catch (InterruptedException ie) {
 					logger.error("Heartbeat thread interrupted", ie);
+					if(threads != null) {
+						for (PingThread thread: threads) {
+							thread.interrupt();
+						}
+					}
 				}
 			}
 		}

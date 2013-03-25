@@ -3,7 +3,6 @@ package org.umn.distributed.consistent.server.sequential;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -18,6 +17,7 @@ import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 
 public class SequentialServer extends ReplicaServer {
+	private Object obj = new Object();
 
 	public SequentialServer(boolean isCoordinator, String coordinatorIP,
 			int coordinatorPort) {
@@ -35,7 +35,8 @@ public class SequentialServer extends ReplicaServer {
 				article.setId(id);
 				return writeAsPrimary(article);
 			} else {
-				String command = SequentialCoordinator.WRITE_COMMAND + "-" + req.toString();
+				String command = SequentialCoordinator.WRITE_COMMAND + "-"
+						+ req.toString();
 				byte[] dataRead = TCPClient.sendData(this.coordinatorMachine,
 						Utils.stringToByte(command));
 				return Utils.byteToString(dataRead);
@@ -47,7 +48,7 @@ public class SequentialServer extends ReplicaServer {
 		}
 	}
 
-	//TODO: no parameter required because we always pass all the articles
+	// TODO: no parameter required because we always pass all the articles
 	@Override
 	public String readItemList(String req) {
 		return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
@@ -73,9 +74,8 @@ public class SequentialServer extends ReplicaServer {
 		HashMap<Machine, Boolean> writeStatus = new HashMap<Machine, Boolean>();
 		Set<Machine> set = getMachineList();
 		set.remove(myInfo);
-		if(writeToReplicas(writeStatus, set, article)) {
-			return COMMAND_SUCCESS
-					+ COMMAND_PARAM_SEPARATOR + article.getId();
+		if (writeToReplicas(writeStatus, set, article)) {
+			return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.getId();
 		}
 		return COMMAND_FAILED + "-" + "Failed writing the article to replicas";
 	}
@@ -85,10 +85,19 @@ public class SequentialServer extends ReplicaServer {
 		logger.debug("Request to write article " + req + " on " + this.myInfo);
 		Article article = Article.parseArticle(req);
 		boolean result = false;
-		if (article.isRoot()) {
-			result = this.bb.addArticle(article);
-		} else {
-			result = this.bb.addArticleReply(article);
+		synchronized (obj) {
+			while ((this.bb.getMaxId() + 1) != article.getId()) {
+				try {
+					obj.wait();
+				} catch (InterruptedException e) {
+					logger.error("Writer thread interrupted", e);
+				}
+			}
+			if (article.isRoot()) {
+				result = this.bb.addArticle(article);
+			} else {
+				result = this.bb.addArticleReply(article);
+			}
 		}
 		if (result) {
 			return COMMAND_SUCCESS;
@@ -100,18 +109,21 @@ public class SequentialServer extends ReplicaServer {
 			Set<Machine> failedServers, Article article) {
 		final CountDownLatch writelatch = new CountDownLatch(
 				failedServers.size());
-		Set<Machine> serverList = getMachineList();
+		Set<Machine> serverSet = getMachineList();
+		for (Machine machine : failedServers) {
+			if (!serverSet.contains(machine)) {
+				logger.info(machine
+						+ " won't be used for writing. Not found in known server list");
+				failedServers.remove(machine);
+			}
+		}
 		List<WriterThread> threadsToWrite = new ArrayList<WriterThread>(
 				failedServers.size());
-		Iterator<Machine> it = failedServers.iterator();
-		while (it.hasNext()) {
-			Machine machine = it.next();
-			if (serverList.contains(machine)) {
-				WriterThread writer = new WriterThread(machine, article,
-						writelatch);
-				threadsToWrite.add(writer);
-				writer.start();
-			}
+		for (Machine machine : failedServers) {
+			logger.debug("Trying to write " + article + " to " + machine);
+			WriterThread writer = new WriterThread(machine, article, writelatch);
+			threadsToWrite.add(writer);
+			writer.start();
 		}
 		try {
 			writelatch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
@@ -120,9 +132,10 @@ public class SequentialServer extends ReplicaServer {
 					wr.interrupt();
 				}
 				if (wr.dataRead != null) {
-					String str = Utils
-							.byteToString(wr.dataRead, Props.ENCODING);
+					String str = Utils.byteToString(wr.dataRead);
 					if (str.equals(COMMAND_SUCCESS)) {
+						logger.info("Written " + wr.articleToWrite + " to "
+								+ wr.serverToWrite);
 						writeStatus.put(wr.serverToWrite, true);
 						failedServers.remove(wr.serverToWrite);
 					}
@@ -136,10 +149,15 @@ public class SequentialServer extends ReplicaServer {
 			}
 		} catch (InterruptedException ie) {
 			logger.error("Error waiting in writer latch", ie);
-			// interrupt all other threads
-			// TODO other servers should kill
+			if (threadsToWrite != null) {
+				for (WriterThread thread : threadsToWrite) {
+					thread.interrupt();
+				}
+			}
 		}
 		if (failedServers.size() > 0) {
+			logger.info(failedServers
+					+ " failed to write. Trying again for these servers");
 			writeToReplicas(writeStatus, failedServers, article);
 		}
 		// TODO: Don't know how to process the error and do the error handling.
@@ -152,16 +170,15 @@ public class SequentialServer extends ReplicaServer {
 	public byte[] handleSpecificRequest(String request) {
 		if (request.startsWith(INTERNAL_WRITE_COMMAND)) {
 			return Utils
-					.stringToByte(
-							write(request
-									.substring((INTERNAL_WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
-											.length())));
+					.stringToByte(write(request
+							.substring((INTERNAL_WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
+									.length())));
 		} else if (request.startsWith(WRITE_COMMAND)) {
 			return Utils.stringToByte(post(request
 					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length())));
 		} else if (request.startsWith(READ_COMMAND)) {
-			//TODO: not needed because no id is being passed now
+			// TODO: not needed because no id is being passed now
 			return Utils.stringToByte(readItemList(request
 					.substring((READ_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length())));
@@ -176,6 +193,11 @@ public class SequentialServer extends ReplicaServer {
 	@Override
 	protected Coordinator createCoordinator() {
 		return new SequentialCoordinator();
+	}
+
+	public void stop() {
+		super.stop();
+		this.externalTcpServer.stop();
 	}
 
 	private class WriterThread extends Thread {
@@ -197,12 +219,10 @@ public class SequentialServer extends ReplicaServer {
 				String command = INTERNAL_WRITE_COMMAND + "-"
 						+ articleToWrite.toString();
 				dataRead = TCPClient.sendData(this.serverToWrite,
-						Utils.stringToByte(command, Props.ENCODING));
+						Utils.stringToByte(command));
 			} catch (IOException e) {
-				logger.error("Cannot write to " + serverToWrite.toString(), e);
+				logger.error("Cannot write to " + serverToWrite, e);
 			}
-			logger.info(String.format("dataRead =%s from server = %s",
-					dataRead, serverToWrite));
 			latchToDecrement.countDown();
 		}
 	}

@@ -2,6 +2,7 @@ package org.umn.distributed.consistent.server;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.log4j.Level;
 import org.umn.distributed.consistent.common.BulletinBoard;
@@ -106,23 +107,15 @@ public abstract class ReplicaServer extends AbstractServer {
 				+ this.coordinatorMachine);
 		String registerMessage = createRegisterMessage();
 		byte resp[] = TCPClient.sendData(coordinatorMachine,
-				Utils.stringToByte(registerMessage, Props.ENCODING));
-		String respStr = Utils.byteToString(resp, Props.ENCODING);
+				Utils.stringToByte(registerMessage));
+		String respStr = Utils.byteToString(resp);
 		if (!respStr.startsWith(COMMAND_SUCCESS)) {
-			logger.error("Error getting the updated known client list from coordinator");
+			logger.error("Error getting serverId from the coordinator " + this.coordinatorMachine);
 			throw new Exception("Coordinator rejected to register the replica");
 		} else {
 			String respParams[] = respStr.split(COMMAND_PARAM_SEPARATOR);
 			this.myInfo.setid(Integer.parseInt(respParams[1]));
-			logger.info("Updated " + myInfo + " with new id");
-			if (respParams.length > 2) {
-				List<Machine> toAdd = Machine.parseList(respParams[1]);
-				for (Machine m : toAdd) {
-					this.addMachine(m);
-					logger.info("Added replica " + m + " to known machine in "
-							+ myInfo);
-				}
-			}
+			logger.info("Updated " + this.myInfo + " with new id");
 		}
 		LoggingUtils.addSpecificFileAppender(getClass(), "logs\\",
 				this.myInfo.getId() + "", Level.DEBUG);
@@ -192,27 +185,24 @@ public abstract class ReplicaServer extends AbstractServer {
 	public byte[] handleRequest(byte[] request) {
 		String req = Utils.byteToString(request);
 		if (req.startsWith(HEARTBEAT_COMMAND)) {
-			logger.info(myInfo + " recieved heartbeat ping");
-			return Utils.stringToByte(COMMAND_SUCCESS);
-		} else if (req.startsWith(ADD_SERVER_COMMAND)) {
-			req = req.substring((ADD_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
+			req = req.substring((HEARTBEAT_COMMAND + COMMAND_PARAM_SEPARATOR)
 					.length());
-			logger.debug("Adding " + req + " to known clients on "
-					+ this.myInfo);
-			Machine machineToAdd = Machine.parse(req);
-			this.addMachine(machineToAdd);
-			logger.info("Added " + req + " to known clients on " + this.myInfo);
-			return Utils.stringToByte(COMMAND_SUCCESS);
-		} else if (req.startsWith(REMOVE_SERVER_COMMAND)) {
-			req = req
-					.substring((REMOVE_SERVER_COMMAND + COMMAND_PARAM_SEPARATOR)
-							.length());
-			logger.debug("Removing " + req + " from known clients on "
-					+ this.myInfo);
-			Machine machine = Machine.parse(req);
-			this.removeMachine(machine.getId());
-			logger.info("Removed " + req + " from known clients on "
-					+ this.myInfo);
+			logger.info(myInfo + " recieved heartbeat ping with server list " + req);
+			List<Machine> machinesToAdd = Machine.parseList(req);
+			Set<Machine> currentMachines = getMachineList();
+			for (Machine machine : machinesToAdd) {
+				if(!currentMachines.contains(machine)) {
+					this.addMachine(machine);
+					logger.info(this.myInfo + " added " + machine + " to known server list");
+				}
+				else {
+					currentMachines.remove(machine);
+				}
+			}
+			for(Machine machine: currentMachines) {
+				this.removeMachine(machine.getId());
+				logger.info(this.myInfo + " removed " + machine + " from known server list");
+			}
 			return Utils.stringToByte(COMMAND_SUCCESS);
 		} else if (req.startsWith(START_ELECTION_COMMAND)) {
 			// TODO: handle election. SHould block all writes;
@@ -222,7 +212,6 @@ public abstract class ReplicaServer extends AbstractServer {
 			// acceptign reqs after coordinator
 			return null;
 		}
-		
 		return handleSpecificRequest(req);
 	}
 

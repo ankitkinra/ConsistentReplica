@@ -25,8 +25,6 @@ public abstract class AbstractServer implements TcpServerDelegate {
 
 	protected static final String REGISTER_COMMAND = "REGISTER";
 	public static final String GET_REGISTERED_COMMAND = "GTRGSTRD";
-	protected static final String ADD_SERVER_COMMAND = "ADDSRV";
-	protected static final String REMOVE_SERVER_COMMAND = "RMSRV";
 
 	protected static final String INVALID_COMMAND = "INVCOM";
 

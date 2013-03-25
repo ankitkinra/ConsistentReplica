@@ -1,14 +1,18 @@
 package org.umn.distributed.consistent.common.client;
 
+import java.io.BufferedReader;
 import java.io.Console;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.umn.distributed.consistent.common.Article;
 import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
+import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.AbstractServer;
@@ -18,7 +22,7 @@ public class Client {
 	private Logger logger = Logger.getLogger(this.getClass());
 
 	private Machine coordinator;
-	private List<Machine> replicaServerList = new ArrayList<Machine>();
+	private HashMap<Integer,Machine> replicaServerMap = new HashMap<Integer,Machine>();
 
 	private Client(String coordinatorIp, int coordinatorPort) {
 		this.coordinator = new Machine(coordinatorIp, coordinatorPort);
@@ -27,6 +31,7 @@ public class Client {
 	private void startClient() throws Exception {
 		byte resp[] = TCPClient.sendData(coordinator,
 				Utils.stringToByte(AbstractServer.GET_REGISTERED_COMMAND));
+		logger.info("resp="+resp);
 		String respStr = Utils.byteToString(resp);
 		if (!respStr.startsWith(AbstractServer.COMMAND_SUCCESS)) {
 			logger.error("Error getting the replica server list from coordinator");
@@ -39,7 +44,7 @@ public class Client {
 			if (replicaStr.length() > 0) {
 				List<Machine> toAdd = Machine.parseList(replicaStr);
 				for (Machine m : toAdd) {
-					this.replicaServerList.add(m);
+					this.replicaServerMap.put(m.getId(),m);
 					logger.debug("Added replica " + m + " to client");
 				}
 			}
@@ -68,12 +73,13 @@ public class Client {
 	}
 
 	private void printIndentated(String str, String alignment) {
-		int index = 0;
-		while (str.startsWith(Article.FORMAT_START)
-				&& (index = str.indexOf(Article.FORMAT_END)) > -1) {
+		int index = -1;
+		int start = 1;
+		while((index = str.indexOf(Article.FORMAT_END, start)) > -1) {
 			System.out.print(alignment);
-			System.out.println(str.substring(0, index + 1));
-			str = str.substring(index + 1);
+			System.out.println(str.substring(start, index + 1));
+			str = str.substring(index + 2);
+			
 		}
 		if (str.startsWith(BulletinBoard.FORMAT_START)) {
 			printIndentated(str.substring(1), alignment + "  ");
@@ -129,16 +135,18 @@ public class Client {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		Props.loadProperties(args[2]);
 		Client client = new Client(args[0], Integer.parseInt(args[1]));
 		try {
 			client.startClient();
-			Console console = System.console();
+			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			while (true) {
 				System.out.println("Command (r, rl <5 to move ahead>, w <article>):");
-				String command = console.readLine();
+				
+				String command = br.readLine();
 				System.out.println("ID:");
-				int id = Integer.parseInt(console.readLine());
-				Machine machine = client.replicaServerList.get(id);
+				int id = Integer.parseInt(br.readLine());
+				Machine machine = client.replicaServerMap.get(id);
 				if (command.startsWith("rl")) {
 					client.readArticleList(machine);
 				} else if (command.startsWith("r")) {

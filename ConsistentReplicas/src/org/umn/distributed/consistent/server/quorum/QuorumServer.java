@@ -487,6 +487,7 @@ public class QuorumServer extends ReplicaServer {
 	@Override
 	public byte[] handleSpecificRequest(String request) {
 		String[] req = request.split(COMMAND_PARAM_SEPARATOR);
+		logger.info("$$$$$$$$$$$$Message received at quorumServer" + req);
 		if (request.startsWith(READ_QUORUM_COMMAND)) {
 			// need to get bb converted to string from a specific id
 			// this is local read, which is the same as the client thing
@@ -519,7 +520,7 @@ public class QuorumServer extends ReplicaServer {
 			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
 					+ readItemList("0"));
 		} else if (request.startsWith(WRITE_COMMAND)) {
-			Utils.stringToByte(post(request
+			return Utils.stringToByte(post(request
 					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length())));
 		}

@@ -75,20 +75,20 @@ public abstract class Coordinator extends AbstractServer {
 	protected class HeartBeat extends Thread {
 		@Override
 		public void run() {
-			List<PingThread> threads;
-			Set<Machine> currentMachines;
-			while (true) {
-				threads = new ArrayList<PingThread>();
-				currentMachines = getMachineList();
-				CountDownLatch latch = new CountDownLatch(
-						currentMachines.size());
-				for (Machine currMachine : currentMachines) {
-					PingThread thread = new PingThread(currMachine,
-							currentMachines, latch);
-					threads.add(thread);
-					thread.start();
-				}
-				try {
+			List<PingThread> threads = null;
+			Set<Machine> currentMachines = null;
+			try {
+				while (true) {
+					threads = new ArrayList<PingThread>();
+					currentMachines = getMachineList();
+					CountDownLatch latch = new CountDownLatch(
+							currentMachines.size());
+					for (Machine currMachine : currentMachines) {
+						PingThread thread = new PingThread(currMachine,
+								currentMachines, latch);
+						threads.add(thread);
+						thread.start();
+					}
 					latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 					for (PingThread t : threads) {
 						if (t.isAlive()) {
@@ -104,12 +104,12 @@ public abstract class Coordinator extends AbstractServer {
 						}
 					}
 					sleep(Props.HEARTBEAT_INTERVAL);
-				} catch (InterruptedException ie) {
-					logger.error("Heartbeat thread interrupted", ie);
-					if(threads != null) {
-						for (PingThread thread: threads) {
-							thread.interrupt();
-						}
+				}
+			} catch (InterruptedException ie) {
+				logger.error("Heartbeat thread interrupted", ie);
+				if (threads != null) {
+					for (PingThread thread : threads) {
+						thread.interrupt();
 					}
 				}
 			}

@@ -215,5 +215,13 @@ public abstract class ReplicaServer extends AbstractServer {
 		return handleSpecificRequest(req);
 	}
 
+	@Override
+	public void stop() {
+		super.stop();
+		if(this.coordinator) {
+			this.coordinatorServer.stop();
+		}
+	}
+	
 	public abstract byte[] handleSpecificRequest(String request);
 }

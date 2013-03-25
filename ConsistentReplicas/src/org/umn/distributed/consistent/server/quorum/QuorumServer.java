@@ -44,7 +44,8 @@ public class QuorumServer extends ReplicaServer {
 		 */
 		HashMap<Machine, String> responseMap = getBBFromReadQuorum(lastSyncedId);
 		// merge stage
-		logger.info("from syncBB lastSyncedId="+lastSyncedId+";response=" + responseMap);
+		logger.info("from syncBB lastSyncedId=" + lastSyncedId + ";response="
+				+ responseMap);
 		mergeResponsesWithLocal(responseMap);
 		// doing this instead of calling sync as we want to wait on this
 		// operation
@@ -83,18 +84,19 @@ public class QuorumServer extends ReplicaServer {
 		Article a = null;
 		try {
 			a = Article.parseArticle(message);
-			if (a != null) {
+			if (a != null && a.getId() > 0) {
 				if (a.isRoot()) {
 					this.bb.addArticle(a);
 				} else {
 					this.bb.addArticleReply(a);
 				}
 			}
+			return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + a.toString();
 		} catch (IllegalArgumentException e) {
 			logger.error("Article Parse error, message = " + message, e);
 		}
 
-		return null;
+		return COMMAND_FAILED + COMMAND_PARAM_SEPARATOR;
 	}
 
 	@Override
@@ -120,18 +122,19 @@ public class QuorumServer extends ReplicaServer {
 								"Error in populating the quorum, no option but to try again",
 								e);
 					}
-
+					waitIfFailedServers(failedServers);
 				} while (failedServers.size() > 0);
 
 				// once write is done just return
-				return aToWrite.toString();
+				return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
+						+ aToWrite.toString();
 			}
 
 		} catch (IllegalArgumentException e1) {
 
 			logger.error("article parse error, message = " + message, e1);
 		}
-		return null;
+		return COMMAND_FAILED + COMMAND_PARAM_SEPARATOR;
 
 	}
 
@@ -253,9 +256,25 @@ public class QuorumServer extends ReplicaServer {
 			} catch (IOException e) {
 				logger.error("quorum popualtion failed", e);
 			}
-
+			waitIfFailedServers(failedServers);
 		} while (failedServers.size() > 0);
 		return responseMap;
+	}
+
+	private void waitIfFailedServers(HashSet<Machine> failedServers) {
+		if (failedServers.size() > 0) {
+			/**
+			 * introduce a timeout, so that the coordinator gets a chance to
+			 * remove the server via the heartbeat
+			 */
+			logger.info("Thread will wait = "
+					+ Thread.currentThread().getName());
+			try {
+				wait(Props.HEARTBEAT_INTERVAL);
+			} catch (InterruptedException e) {
+				logger.warn("Got interrupted, will continue");
+			}
+		}
 	}
 
 	private void executeReadRequestOnReadQuorum(
@@ -272,7 +291,7 @@ public class QuorumServer extends ReplicaServer {
 
 				successfulServers.add(myInfo);
 				failedServers.remove(myInfo);
-				logger.info("Removed from local read;myInfo="+myInfo);
+				logger.info("Removed from local read;myInfo=" + myInfo);
 			}
 			List<ReadService> threadsToRead = new ArrayList<ReadService>(
 					failedServers.size());
@@ -352,10 +371,6 @@ public class QuorumServer extends ReplicaServer {
 
 	@Override
 	public String readItem(String id) {
-		/*
-		 * Assemble the quorum and then
-		 */
-
 		return this.bb.getArticle(Integer.parseInt(id)).toString();
 	}
 
@@ -432,8 +447,10 @@ public class QuorumServer extends ReplicaServer {
 		String[] req = request.split(COMMAND_PARAM_SEPARATOR);
 		if (request.startsWith(READ_QUORUM_COMMAND)) {
 			// need to get bb converted to string from a specific id
+			// this is local read, which is the same as the client thing
 			int lastSyncArticleId = 0;
-			String[] arrStr = req[1].split(AbstractServer.COMMAND_VALUE_SEPARATOR);
+			String[] arrStr = req[1]
+					.split(AbstractServer.COMMAND_VALUE_SEPARATOR);
 			lastSyncArticleId = Integer.parseInt(arrStr[1]);
 			List<Article> articles = this.bb.getArticlesFrom(lastSyncArticleId);
 			return parseBytesFromArticleList(articles);
@@ -442,13 +459,34 @@ public class QuorumServer extends ReplicaServer {
 			return Utils.stringToByte(COMMAND_SUCCESS);
 			// write local
 
+		} else if (request.startsWith(READITEM_COMMAND)) {
+			// need an id to read
+			String idToRead = request
+					.substring((READITEM_COMMAND + COMMAND_PARAM_SEPARATOR)
+							.length());
+			String article = readItem(idToRead);
+			if (article != null) {
+				return Utils.stringToByte(COMMAND_SUCCESS
+						+ COMMAND_PARAM_SEPARATOR + article);
+			} else {
+				return Utils.stringToByte(COMMAND_FAILED
+						+ COMMAND_PARAM_SEPARATOR);
+			}
+		} else if (request.startsWith(READ_COMMAND)) {
+			// need to return back the readItem
+			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
+					+ readItemList("0"));
+		} else if (request.startsWith(WRITE_COMMAND)) {
+			Utils.stringToByte(post(request
+					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
+							.length())));
 		}
 		return Utils.stringToByte(INVALID_COMMAND);
 
 	}
 
 	private byte[] parseBytesFromArticleList(List<Article> articles) {
-		logger.info("READ_QUORUM_RESPONSE;articles="+articles);
+		logger.info("READ_QUORUM_RESPONSE;articles=" + articles);
 		StringBuilder sb = new StringBuilder(READ_QUORUM_RESPONSE);
 		sb.append(COMMAND_PARAM_SEPARATOR);
 		for (Article a : articles) {
@@ -512,12 +550,13 @@ public class QuorumServer extends ReplicaServer {
 		super.postRegister();
 		// start the sync thread
 		syncBB();
-			/**
-			 * before we are ready to take requests we need to get upto with all the known clients 
-			 * hence we need to initiate the sync, but we need to use the knownClients
-			 */
+		/**
+		 * before we are ready to take requests we need to get upto with all the
+		 * known clients hence we need to initiate the sync, but we need to use
+		 * the knownClients
+		 */
 		syncThread.start();
-		
+
 	}
 
 	protected void postUnRegister() {
@@ -542,11 +581,11 @@ public class QuorumServer extends ReplicaServer {
 			qs.start();
 			Article a = new Article(0, 0, "t1", "c1");
 			qs.post(a.toString());
-			//System.out.println(qs.readItemList("0"));
+			// System.out.println(qs.readItemList("0"));
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 	}
 }

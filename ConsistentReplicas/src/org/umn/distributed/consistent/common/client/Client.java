@@ -34,7 +34,7 @@ public class Client {
 					"Error getting the replica server list from coordinator");
 		} else {
 			String replicaStr = respStr
-					.substring((AbstractServer.COMMAND_FAILED + AbstractServer.COMMAND_PARAM_SEPARATOR)
+					.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 							.length());
 			if (replicaStr.length() > 0) {
 				List<Machine> toAdd = Machine.parseList(replicaStr);
@@ -134,7 +134,7 @@ public class Client {
 			client.startClient();
 			Console console = System.console();
 			while (true) {
-				System.out.println("Command (r, rl, w <article>):");
+				System.out.println("Command (r, rl <5 to move ahead>, w <article>):");
 				String command = console.readLine();
 				System.out.println("ID:");
 				int id = Integer.parseInt(console.readLine());

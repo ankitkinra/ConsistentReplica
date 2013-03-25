@@ -89,12 +89,12 @@ public abstract class Coordinator extends AbstractServer {
 				try {
 					latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
 					for (PingThread t : threads) {
+						if(t.isAlive()) {
+							t.interrupt();
+						}
 						if (t.dataRead == null
 								|| !Utils.byteToString(t.dataRead).startsWith(
 										COMMAND_SUCCESS)) {
-							if(t.isAlive()) {
-								t.interrupt();
-							}
 							logger.error("Unable to update known servers on machine "
 									+ t.serverToUpdate
 									+ ". Removing from known server list");

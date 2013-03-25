@@ -18,9 +18,9 @@ public abstract class Coordinator extends AbstractServer {
 
 	protected AtomicInteger articleID = new AtomicInteger(1);
 	protected AtomicInteger knownMachineID = new AtomicInteger(1);
-	
+
 	private HeartBeat heartBeatThread = new HeartBeat();
-	
+
 	protected Coordinator(STRATEGY strategy) {
 		super(strategy, Props.COORDINATOR_PORT,
 				Props.COORDINATOR_SERVER_THREADS);
@@ -35,71 +35,21 @@ public abstract class Coordinator extends AbstractServer {
 		}
 	}
 
-	protected boolean checkIsAlive(Machine machine) {
-		try {
-			byte[] data = TCPClient.sendData(machine,
-					Utils.stringToByte(HEARTBEAT_COMMAND, Props.ENCODING));
-			String response = Utils.byteToString(data, Props.ENCODING);
-			if (response.startsWith(COMMAND_SUCCESS)) {
-				logger.info(machine.toString()
-						+ " sent negative response to heartbeat");
-				return true;
-			}
-		} catch (IOException e) {
-			logger.info(machine.toString() + " did not respond to heartbeat");
-		}
-		return false;
-	}
-
 	@Override
 	public byte[] handleRequest(byte[] request) {
-		String reqStr = Utils.byteToString(request, Props.ENCODING);
+		String reqStr = Utils.byteToString(request);
 		if (reqStr.startsWith(REGISTER_COMMAND)) {
 			StringBuilder builder = new StringBuilder();
 			Machine machineToAdd = Machine.parse(reqStr
 					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
 							.length()));
 			machineToAdd.setid(knownMachineID.getAndIncrement());
-			builder.append(COMMAND_PARAM_SEPARATOR)
-					.append(machineToAdd.getId())
-					.append(COMMAND_PARAM_SEPARATOR);
-			logger.info(machineToAdd
-					+ " trying to register with the coordinator");
-			List<UpdaterThread> threads = new ArrayList<UpdaterThread>();
-			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
-			CountDownLatch latch = new CountDownLatch(
-					machineSetToUpdateWithNewServer.size());
-			logger.debug("To update the machines: "
-					+ machineSetToUpdateWithNewServer);
-			for (Machine currMachine : machineSetToUpdateWithNewServer) {
-				// this is already added to the set once
-				UpdaterThread thread = new UpdaterThread(currMachine,
-						machineToAdd, latch, true);
-				threads.add(thread);
-				thread.start();
-				builder.append(currMachine);
-			}
-			try {
-				latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
-				for (UpdaterThread t : threads) {
-					if (t.dataRead == null
-							|| !Utils.byteToString(t.dataRead).startsWith(
-									COMMAND_SUCCESS)) {
-						logger.error("Unable to update registered list on machine "
-								+ t.serverToUpdate);
-						return Utils
-								.stringToByte(COMMAND_FAILED
-										+ COMMAND_PARAM_SEPARATOR
-										+ "Unable to update registered server list on all replicas");
-					}
-				}
-			} catch (InterruptedException ie) {
-				logger.error("Updater latch interrupted", ie);
-			}
+			builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR)
+					.append(machineToAdd.getId());
 			this.addMachine(machineToAdd);
 			logger.info(machineToAdd
-					+ " was added by coordinator to all replicas");
-			return Utils.stringToByte(COMMAND_SUCCESS + builder.toString());
+					+ " added by coordinator to known replica list");
+			return Utils.stringToByte(builder.toString());
 		} else if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
 			logger.debug("Client requested the registered server list");
 			StringBuilder builder = new StringBuilder();
@@ -115,74 +65,91 @@ public abstract class Coordinator extends AbstractServer {
 	}
 
 	public abstract byte[] handleSpecificRequest(String str);
-	
+
 	@Override
 	public final void stop() {
 		super.stop();
 		heartBeatThread.interrupt();
 	}
-	protected class HeartBeat extends Thread{
+
+	protected class HeartBeat extends Thread {
 		@Override
 		public void run() {
 			while (true) {
+				List<PingThread> threads = new ArrayList<PingThread>();
+				Set<Machine> currentMachines = getMachineList();
+				CountDownLatch latch = new CountDownLatch(
+						currentMachines.size());
+				for (Machine currMachine : currentMachines) {
+					PingThread thread = new PingThread(currMachine,
+							currentMachines, latch);
+					threads.add(thread);
+					thread.start();
+				}
 				try {
-					wait(Props.HEARTBEAT_INTERVAL);
-					Set<Machine> knownClientCopy = getMachineList();
-					for(Machine machine:knownClientCopy){
-						if (machine != null) {
-							if (!checkIsAlive(machine)) {
-								removeMachine(machine.getId());
+					latch.await(Props.NETWORK_TIMEOUT, TimeUnit.MILLISECONDS);
+					for (PingThread t : threads) {
+						if (t.dataRead == null
+								|| !Utils.byteToString(t.dataRead).startsWith(
+										COMMAND_SUCCESS)) {
+							if(t.isAlive()) {
+								t.interrupt();
 							}
+							logger.error("Unable to update known servers on machine "
+									+ t.serverToUpdate
+									+ ". Removing from known server list");
+							removeMachine(t.serverToUpdate.getId());
 						}
 					}
-				} catch (InterruptedException e) {
-					logger.error("Heartbeat thread interrupted", e);
+					sleep(Props.HEARTBEAT_INTERVAL);
+				} catch (InterruptedException ie) {
+					logger.error("Heartbeat thread interrupted", ie);
 				}
 			}
 		}
 	}
 
-	protected class UpdaterThread extends Thread {
+	protected class PingThread extends Thread {
 		Machine serverToUpdate;
-		Machine machineToAdd;
+		Set<Machine> machines;
 		CountDownLatch latchToDecrement;
-		byte[] dataRead;
-		boolean add;
+		byte dataRead[];
 
-		UpdaterThread(Machine serverToUpdate, Machine machineToAdd,
-				CountDownLatch latchToDecrement, boolean add) {
+		PingThread(Machine serverToUpdate, Set<Machine> machines,
+				CountDownLatch latchToDecrement) {
 			this.serverToUpdate = serverToUpdate;
-			this.machineToAdd = machineToAdd;
+			this.machines = machines;
 			this.latchToDecrement = latchToDecrement;
-			this.add = add;
 		}
 
 		@Override
 		public void run() {
 			try {
+				logger.debug("Updating known server list on "
+						+ this.serverToUpdate);
 				StringBuilder builder = new StringBuilder();
-				if (add) {
-					builder.append(ADD_SERVER_COMMAND).append(
-							COMMAND_PARAM_SEPARATOR);
-					builder.append(machineToAdd);
-				} else {
-					builder.append(REMOVE_SERVER_COMMAND).append(
-							COMMAND_PARAM_SEPARATOR);
-					builder.append(machineToAdd);
+				builder.append(HEARTBEAT_COMMAND).append(
+						COMMAND_PARAM_SEPARATOR);
+				for (Machine machine : machines) {
+					if (!machine.equals(serverToUpdate)) {
+						builder.append(machine);
+					}
 				}
-				logger.info("UpdaterThread builder for update operation == "
-						+ builder);
 				dataRead = TCPClient.sendData(this.serverToUpdate,
 						Utils.stringToByte(builder.toString()));
-				logger.info("Updated server " + serverToUpdate
-						+ " with the latest list; server response = "
-						+ dataRead);
+				String response = Utils.byteToString(dataRead);
+				if (response.startsWith(COMMAND_FAILED)) {
+					removeMachine(serverToUpdate.getId());
+					logger.info(serverToUpdate + " responded with "
+							+ COMMAND_FAILED
+							+ " to heartbeat. Removed from known servers list");
+				}
 			} catch (IOException e) {
-				logger.error("Cannot write to " + serverToUpdate, e);
+				logger.error("Error updating server " + serverToUpdate
+						+ " with known server list", e);
 			} finally {
 				latchToDecrement.countDown();
 			}
-
 		}
 	}
 }

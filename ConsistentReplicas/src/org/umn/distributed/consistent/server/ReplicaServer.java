@@ -222,7 +222,7 @@ public abstract class ReplicaServer extends AbstractServer {
 			// acceptign reqs after coordinator
 			return null;
 		}
-		logger.error("request could not be handled, request came in as="+req);
+		
 		return handleSpecificRequest(req);
 	}
 

@@ -412,18 +412,21 @@ public class BulletinBoard {
 	public static BulletinBoard parseBBFromArticleList(
 			String articleListInString) {
 		BulletinBoard bb = new BulletinBoard();
-		String[] articleList = articleListInString.split(AbstractServer.LIST_SEPARATOR);
-		for (String art : articleList) {
-			Article a = null;
-			try {
-				a = Article.parseArticle(art);
-				if (a.isRoot()) {
-					bb.addArticle(a);
-				} else {
-					bb.addArticleReply(a);
-				}
-			} catch (IllegalArgumentException e) {
+		if (!Utils.isEmpty(articleListInString)) {
+			String[] articleList = articleListInString
+					.split(AbstractServer.LIST_SEPARATOR);
+			for (String art : articleList) {
+				Article a = null;
+				try {
+					a = Article.parseArticle(art);
+					if (a.isRoot()) {
+						bb.addArticle(a);
+					} else {
+						bb.addArticleReply(a);
+					}
+				} catch (IllegalArgumentException e) {
 
+				}
 			}
 		}
 		return bb;

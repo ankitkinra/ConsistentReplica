@@ -94,22 +94,34 @@ public class TCPServer implements Runnable {
 			int count = 0;
 			try {
 				is = socket.getInputStream();
-				while (is.available() > 0 && (count = is.read(buffer)) > -1) {
-					bos.write(buffer, 0, count);
-				}
+				logger.debug("A client connected to server;socket=" + socket);
+				do {
+					count = is.read(buffer);
+					if (count > -1) {
+						bos.write(buffer, 0, count);
+					}
+				} while (is.available() > 0);
+				// while (is.available() > 0 && (count = is.read(buffer)) > -1)
+				// {
+				// if (logger.isDebugEnabled()) {
+				// logger.debug("Read " + count + " bytes from socket "
+				// + socket);
+				// }
+				// bos.write(buffer, 0, count);
+				// }
 				bos.flush();
 				buffer = bos.toByteArray();
-				logger.debug("A client connected to server;socket="+socket);
-				if(logger.isDebugEnabled()) {
-					logger.debug("Data received at server: " + Utils.byteToString(buffer));
+				if (logger.isDebugEnabled()) {
+					logger.debug("Data received at server: "
+							+ Utils.byteToString(buffer));
 				}
 				buffer = delegate.handleRequest(buffer);
-				if(logger.isDebugEnabled()) {
-					logger.debug("Data returned to client :" + Utils.byteToString(buffer));
+				if (logger.isDebugEnabled()) {
+					logger.debug("Data returned to client :"
+							+ Utils.byteToString(buffer));
 				}
 				socket.getOutputStream().write(buffer);
 				bos.close();
-
 				// TODO:add specific handling for different exceptions types
 				// based on what exception is thrown when the remote client
 				// closes the
@@ -124,6 +136,7 @@ public class TCPServer implements Runnable {
 					logger.warn("Error closing socket", ios);
 				}
 			}
+			logger.debug("All done from Server thread ");
 		}
 	}
 }

@@ -35,23 +35,25 @@ public class LoggingUtils {
 	}
 
 	public static void addSpecificFileAppender(Class classInitLogger,
-			String logFileDirectory,String uniqueSuffix, Level level) {
-		addSpecificFileAppender(classInitLogger, logFileDirectory,uniqueSuffix, level,
-				DEFAULT_DEBUG_PATTERN);
+			String logFileDirectory, String uniqueSuffix, Level level) {
+		addSpecificFileAppender(classInitLogger, logFileDirectory,
+				uniqueSuffix, level, DEFAULT_DEBUG_PATTERN);
 	}
 
 	public static void addSpecificFleAppender(Class classInitLogger,
 			String logFileDirectory, String uniqueSuffix) {
-		addSpecificFileAppender(classInitLogger, logFileDirectory, uniqueSuffix,
-				DEFAULT_LOG_LEVEL, DEFAULT_DEBUG_PATTERN);
+		addSpecificFileAppender(classInitLogger, logFileDirectory,
+				uniqueSuffix, DEFAULT_LOG_LEVEL, DEFAULT_DEBUG_PATTERN);
 	}
 
 	public static void addSpecificFileAppender(Class classInitLogger,
-			String logFileDirectory,String uniqueSuffix, Level level, String pattern) {
+			String logFileDirectory, String uniqueSuffix, Level level,
+			String pattern) {
 		FileAppender appender = new FileAppender();
 		appender.setName(classInitLogger.getCanonicalName());
 		appender.setLayout(new PatternLayout(pattern));
-		appender.setFile(logFileDirectory+classInitLogger.getSimpleName()+"_"+uniqueSuffix);
+		appender.setFile(logFileDirectory + classInitLogger.getSimpleName()
+				+ "_" + uniqueSuffix + ".log");
 		appender.setAppend(true);
 		appender.setThreshold(level);
 		appender.activateOptions();

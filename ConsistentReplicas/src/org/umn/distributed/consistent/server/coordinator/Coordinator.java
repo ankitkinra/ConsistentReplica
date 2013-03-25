@@ -2,8 +2,6 @@ package org.umn.distributed.consistent.server.coordinator;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -20,8 +18,9 @@ public abstract class Coordinator extends AbstractServer {
 
 	protected AtomicInteger articleID = new AtomicInteger(1);
 	protected AtomicInteger knownMachineID = new AtomicInteger(1);
-	protected HashMap<Integer, Integer> toRemoveList = new HashMap<Integer, Integer>();
-
+	
+	private HeartBeat heartBeatThread = new HeartBeat();
+	
 	protected Coordinator(STRATEGY strategy) {
 		super(strategy, Props.COORDINATOR_PORT,
 				Props.COORDINATOR_SERVER_THREADS);
@@ -30,7 +29,7 @@ public abstract class Coordinator extends AbstractServer {
 	@Override
 	public void startSpecific() throws Exception {
 		try {
-
+			heartBeatThread.start();
 		} catch (Exception e) {
 			throw e;
 		}
@@ -116,36 +115,24 @@ public abstract class Coordinator extends AbstractServer {
 	}
 
 	public abstract byte[] handleSpecificRequest(String str);
-
-	protected class HeartBeat implements Runnable {
+	
+	@Override
+	public final void stop() {
+		super.stop();
+		heartBeatThread.interrupt();
+	}
+	protected class HeartBeat extends Thread{
 		@Override
 		public void run() {
 			while (true) {
 				try {
 					wait(Props.HEARTBEAT_INTERVAL);
-					Iterator<Integer> it = knownClients.keySet().iterator();
-					while (it.hasNext()) {
-						Machine machine = knownClients.get(it.next());
-						// This is to make sure that machine has not been
-						// removed
+					Set<Machine> knownClientCopy = getMachineList();
+					for(Machine machine:knownClientCopy){
 						if (machine != null) {
 							if (!checkIsAlive(machine)) {
-								if (toRemoveList.containsKey(machine.getId())) {
-									toRemoveList
-											.put(machine.getId(), toRemoveList
-													.get(machine.getId()) + 1);
-								}
+								removeMachine(machine.getId());
 							}
-						}
-					}
-
-					it = toRemoveList.keySet().iterator();
-					while (it.hasNext()) {
-						Integer id = it.next();
-						if (toRemoveList.get(id) >= Props.REMOVE_INTERVAL) {
-							// TODO: check this code
-							knownClients.remove(id);
-							it.remove();
 						}
 					}
 				} catch (InterruptedException e) {

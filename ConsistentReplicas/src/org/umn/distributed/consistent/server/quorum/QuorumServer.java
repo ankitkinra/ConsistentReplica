@@ -448,6 +448,7 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	private byte[] parseBytesFromArticleList(List<Article> articles) {
+		logger.info("READ_QUORUM_RESPONSE;articles="+articles);
 		StringBuilder sb = new StringBuilder(READ_QUORUM_RESPONSE);
 		sb.append(COMMAND_PARAM_SEPARATOR);
 		for (Article a : articles) {
@@ -515,7 +516,7 @@ public class QuorumServer extends ReplicaServer {
 			 * before we are ready to take requests we need to get upto with all the known clients 
 			 * hence we need to initiate the sync, but we need to use the knownClients
 			 */
-			
+		syncThread.start();
 		
 	}
 
@@ -539,13 +540,13 @@ public class QuorumServer extends ReplicaServer {
 				coordinatorPort);
 		try {
 			qs.start();
+			Article a = new Article(0, 0, "t1", "c1");
+			qs.post(a.toString());
+			//System.out.println(qs.readItemList("0"));
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Article a = new Article(0, 0, "t1", "c1");
-		qs.post(a.toString());
-		//System.out.println(qs.readItemList("0"));
-
+		
 	}
 }

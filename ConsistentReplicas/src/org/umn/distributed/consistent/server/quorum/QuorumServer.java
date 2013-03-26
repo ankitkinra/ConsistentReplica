@@ -67,45 +67,49 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	private void mergeResponsesWithLocal(HashMap<Machine, String> responseMap) {
-		BulletinBoard mergedBulletinBoard = null;
+		BulletinBoard mergedBulletinBoard = new BulletinBoard();
 		boolean first = true;
 		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
 			// get BB from string
-			if (Utils.isEmpty(machineBBStr.getValue())) {
-				logger.warn("Skipping BB String as it is Empty; "
-						+ machineBBStr.getValue());
+			String bbStr = machineBBStr.getValue().substring(
+					READ_QUORUM_RESPONSE.length()
+							+ COMMAND_PARAM_SEPARATOR.length());
+			// TODO: I am not sure about this. looks like you always have
+			// READ_QUORUM_RESPONSE + COMMAND_PARAM_SEPARATOR
+			// in the response. and still you are checking isEmpty. I think it
+			// should be parsed and checked.
+			if (Utils.isEmpty(bbStr)) {
+				logger.warn("Skipping BB String as it is Empty; " + bbStr);
 				continue;
 			}
-			if (first) {
-
-				String articles = machineBBStr.getValue().substring(
-						READ_QUORUM_RESPONSE.length()
-								+ COMMAND_PARAM_SEPARATOR.length());
-				logger.info("Sending for parse = " + articles);
-				mergedBulletinBoard = BulletinBoard
-						.parseBBFromArticleList(articles);
-				logger.info(String
-						.format("After parsing articles =%s, mergedBulletinBoard  = %s",
-								articles, mergedBulletinBoard));
-				first = false;
-
-			} else {
-				String articles = machineBBStr.getValue().substring(
-						READ_QUORUM_RESPONSE.length()
-								+ COMMAND_PARAM_SEPARATOR.length());
-
-				BulletinBoard bbThis = BulletinBoard
-						.parseBBFromArticleList(articles);
-				logger.info(String
-						.format("After parsing articles =%s, mergedBulletinBoard  = %s",
-								articles, bbThis));
-				// now merge
-				logger.info("Two bbs to merge = " + mergedBulletinBoard
-						+ "\nTwo=" + bbThis);
-				mergedBulletinBoard = BulletinBoard.mergeBB(
-						mergedBulletinBoard, bbThis);
-			}
-
+			BulletinBoard
+					.parseAndAddBBEntriesIntoBB(mergedBulletinBoard, bbStr);
+			// if (first) {
+			//
+			// String articles = machineBBStr.getValue().substring(
+			// READ_QUORUM_RESPONSE.length()
+			// + COMMAND_PARAM_SEPARATOR.length());
+			// logger.info("Sending for parse = " + articles);
+			// mergedBulletinBoard = BulletinBoard
+			// .parseBBFromArticleList(articles);
+			// logger.info(String
+			// .format("After parsing articles =%s, mergedBulletinBoard  = %s",
+			// articles, mergedBulletinBoard));
+			// first = false;
+			//
+			// } else {
+			//
+			// BulletinBoard bbThis = BulletinBoard
+			// .parseBBFromArticleList(articles);
+			// logger.info(String
+			// .format("After parsing articles =%s, mergedBulletinBoard  = %s",
+			// articles, bbThis));
+			// // now merge
+			// logger.info("Two bbs to merge = " + mergedBulletinBoard
+			// + "\nTwo=" + bbThis);
+			// mergedBulletinBoard = BulletinBoard.mergeBB(
+			// mergedBulletinBoard, bbThis);
+			// }
 		}
 		// once the bulletinBoard is merged, we can just replace
 		if (mergedBulletinBoard != null) {

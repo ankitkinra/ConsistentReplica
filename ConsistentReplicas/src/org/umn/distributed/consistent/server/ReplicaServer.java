@@ -87,6 +87,9 @@ public abstract class ReplicaServer extends AbstractServer {
 			// stop();
 			throw e;
 		}
+		logger.info("******************************** Replica started ************************************");
+		logger.info("Server IP: " + this.myInfo.getIP() + ", Server Port: " + this.myInfo.getExternalPort());
+		logger.info("*************************************************************************************");
 	}
 
 	protected void preRegister() throws Exception {
@@ -110,7 +113,8 @@ public abstract class ReplicaServer extends AbstractServer {
 				Utils.stringToByte(registerMessage));
 		String respStr = Utils.byteToString(resp);
 		if (!respStr.startsWith(COMMAND_SUCCESS)) {
-			logger.error("Error getting serverId from the coordinator " + this.coordinatorMachine);
+			logger.error("Error getting serverId from the coordinator "
+					+ this.coordinatorMachine);
 			throw new Exception("Coordinator rejected to register the replica");
 		} else {
 			String respParams[] = respStr.split(COMMAND_PARAM_SEPARATOR);
@@ -183,45 +187,54 @@ public abstract class ReplicaServer extends AbstractServer {
 	public abstract String write(String req);
 
 	public byte[] handleRequest(byte[] request) {
-		String req = Utils.byteToString(request);
-		if (req.startsWith(HEARTBEAT_COMMAND)) {
-			req = req.substring((HEARTBEAT_COMMAND + COMMAND_PARAM_SEPARATOR)
-					.length());
-			logger.info(myInfo + " recieved heartbeat ping with server list " + req);
-			List<Machine> machinesToAdd = Machine.parseList(req);
-			Set<Machine> currentMachines = getMachineList();
-			for (Machine machine : machinesToAdd) {
-				if(!currentMachines.contains(machine)) {
-					this.addMachine(machine);
-					logger.info(this.myInfo + " added " + machine + " to known server list");
+		try {
+			String req = Utils.byteToString(request);
+			if (req.startsWith(HEARTBEAT_COMMAND)) {
+				req = req
+						.substring((HEARTBEAT_COMMAND + COMMAND_PARAM_SEPARATOR)
+								.length());
+				logger.info(myInfo
+						+ " recieved heartbeat ping with server list " + req);
+				List<Machine> machinesToAdd = Machine.parseList(req);
+				Set<Machine> currentMachines = getMachineList();
+				for (Machine machine : machinesToAdd) {
+					if (!currentMachines.contains(machine)) {
+						this.addMachine(machine);
+						logger.info(this.myInfo + " added " + machine
+								+ " to known server list");
+					} else {
+						currentMachines.remove(machine);
+					}
 				}
-				else {
-					currentMachines.remove(machine);
+				for (Machine machine : currentMachines) {
+					this.removeMachine(machine.getId());
+					logger.info(this.myInfo + " removed " + machine
+							+ " from known server list");
 				}
+				return Utils.stringToByte(COMMAND_SUCCESS);
+			} else if (req.startsWith(START_ELECTION_COMMAND)) {
+				// TODO: handle election. SHould block all writes;
+				return null;
+			} else if (req.startsWith(END_ELECTION_COMMAND)) {
+				// TODO: handle election ends. start new coordinator and start
+				// acceptign reqs after coordinator
+				return null;
 			}
-			for(Machine machine: currentMachines) {
-				this.removeMachine(machine.getId());
-				logger.info(this.myInfo + " removed " + machine + " from known server list");
-			}
-			return Utils.stringToByte(COMMAND_SUCCESS);
-		} else if (req.startsWith(START_ELECTION_COMMAND)) {
-			// TODO: handle election. SHould block all writes;
-			return null;
-		} else if (req.startsWith(END_ELECTION_COMMAND)) {
-			// TODO: handle election ends. start new coordinator and start
-			// acceptign reqs after coordinator
-			return null;
+			return handleSpecificRequest(req);
+		} catch (Exception e) {
+			logger.error("Exception handling request in replica server", e);
+			return Utils.stringToByte(COMMAND_FAILED + COMMAND_PARAM_SEPARATOR
+					+ e.getMessage());
 		}
-		return handleSpecificRequest(req);
 	}
 
 	@Override
 	public void stop() {
 		super.stop();
-		if(this.coordinator) {
+		if (this.coordinator) {
 			this.coordinatorServer.stop();
 		}
 	}
-	
+
 	public abstract byte[] handleSpecificRequest(String request);
 }

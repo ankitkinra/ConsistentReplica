@@ -33,35 +33,43 @@ public abstract class Coordinator extends AbstractServer {
 		} catch (Exception e) {
 			throw e;
 		}
+		logger.info("******************************** Coordinator started ********************************");
+		logger.info("Coordinator IP: " + this.myInfo.getIP() + ", Coordinator Port: " + this.myInfo.getPort());
+		logger.info("*************************************************************************************");
 	}
 
 	@Override
 	public byte[] handleRequest(byte[] request) {
-		String reqStr = Utils.byteToString(request);
-		if (reqStr.startsWith(REGISTER_COMMAND)) {
-			StringBuilder builder = new StringBuilder();
-			Machine machineToAdd = Machine.parse(reqStr
-					.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
-							.length()));
-			machineToAdd.setid(knownMachineID.getAndIncrement());
-			builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR)
-					.append(machineToAdd.getId());
-			this.addMachine(machineToAdd);
-			logger.info(machineToAdd
-					+ " added by coordinator to known replica list");
-			return Utils.stringToByte(builder.toString());
-		} else if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
-			logger.debug("Client requested the registered server list");
-			StringBuilder builder = new StringBuilder();
-			builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR);
-			Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
-			for (Machine currMachine : machineSetToUpdateWithNewServer) {
-				builder.append(currMachine);
+		try {
+			String reqStr = Utils.byteToString(request);
+			if (reqStr.startsWith(REGISTER_COMMAND)) {
+				StringBuilder builder = new StringBuilder();
+				Machine machineToAdd = Machine.parse(reqStr
+						.substring((REGISTER_COMMAND + COMMAND_PARAM_SEPARATOR)
+								.length()));
+				machineToAdd.setid(knownMachineID.getAndIncrement());
+				builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR)
+						.append(machineToAdd.getId());
+				this.addMachine(machineToAdd);
+				logger.info(machineToAdd
+						+ " added by coordinator to known replica list");
+				return Utils.stringToByte(builder.toString());
+			} else if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
+				logger.debug("Client requested the registered server list");
+				StringBuilder builder = new StringBuilder();
+				builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR);
+				Set<Machine> machineSetToUpdateWithNewServer = getMachineList();
+				for (Machine currMachine : machineSetToUpdateWithNewServer) {
+					builder.append(currMachine);
+				}
+				return Utils.stringToByte(builder.toString());
 			}
-			return Utils.stringToByte(builder.toString());
+			return handleSpecificRequest(reqStr);
+		} catch (Exception e) {
+			logger.error("Exception handling request in replica server", e);
+			return Utils.stringToByte(COMMAND_FAILED + COMMAND_PARAM_SEPARATOR
+					+ e.getMessage());
 		}
-
-		return handleSpecificRequest(reqStr);
 	}
 
 	public abstract byte[] handleSpecificRequest(String str);

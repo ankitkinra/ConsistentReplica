@@ -31,8 +31,6 @@ public class TCPClient {
 			// the execution
 			clientSocket.getOutputStream().write(data);
 			clientSocket.getOutputStream().flush();
-			logger.info("TCPClient has written data to stream data="
-					+ Utils.byteToString(data));
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			is = clientSocket.getInputStream();
 

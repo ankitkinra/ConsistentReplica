@@ -17,7 +17,7 @@ public abstract class ReplicaServer extends AbstractServer {
 
 	protected static final String INTERNAL_WRITE_COMMAND = "INWRITE";
 	public static final String WRITE_COMMAND = "WRITE";
-	public static final String READ_COMMAND = "READ";
+	public static final String READ_COMMAND = "READ"; //READ from client
 	public static final String READITEM_COMMAND = "RDITEM";
 
 	private static final String START_ELECTION_COMMAND = "STRTELEC";

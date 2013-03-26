@@ -21,6 +21,42 @@ import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
 
 public class QuorumServer extends ReplicaServer {
+	/**
+	 * TODO things that we need to handle at server level
+	 * 
+	 * <pre>
+	 * a) Calls from the external client and their responses
+	 * 		i) ReadItemList == returns the local bb with latest Article retrieved from Quorum
+	 * 		ii) ReadItem == returns the exact article requested by the client, as ReadItemList would be invoked 
+	 * 						before we will have all the articles needed by the client which include the local replica 
+	 * 						articles along with the max written article.
+	 * 		iii) Post == when the client gives an article to be posted, need to assemble the write quorum [after asking coordinator] and get this written out to the quorum
+	 * b) Calls from the internal replica servers and their responses
+	 * 		i) ReadLatestItem -- Call from an internal server which just wants the latest article to be returned
+	 * 		ii) ReadItemsFromID -- Call from an internal server with an articleId and we need to return all the articles after this number
+	 * 		iii) WriteArticle -- Write an article in local BB, this will be a well formed article with an Id and everything 
+	 * 		iv) Election calls TODO
+	 * c) Calls to internal replica servers and their responses
+	 * 		i) GetLatestArticle -- Call to get latest Article in replicas BB
+	 * 		ii) GetArticlesFrom -- Call to get all articles from a particular Article ID 
+	 * 		iii) WriteArticle -- Need to send an article to a replica, who will write the same in its local bb
+	 * 		iv) Election calls TODO
+	 * d) Calls to Quorum Coordinator and their responses
+	 * 		i) GetReadQuorum
+	 * 		ii) GetWriteQuorumAndArticleId
+	 * 		iii) Register
+	 * e) Call from Quorum Coordinator
+	 * 		i) Heartbeat
+	 * 		
+	 * </pre>
+	 */
+	public static final String READ_LATEST_INT = "READ_LATEST_INT"; // READ
+																	// latest
+																	// article
+																	// from
+																	// internal
+																	// replica
+	public static final String READ_COMMAND_ENTIRE_BB = "READ_Q_COMPLETE"; // UNUSED
 
 	private static final String READ_BB_COMMAND_COMPLETE = READ_QUORUM_COMMAND
 			+ "-FROM_ID=%%ARTICLE_ID%%";
@@ -263,6 +299,11 @@ public class QuorumServer extends ReplicaServer {
 				this.myInfo, this.coordinatorMachine, articleId,
 				successfulServers, failedServers);
 	}
+
+	/**
+	 * TODO should return the local view of the system and not invoke the read
+	 * quorum
+	 */
 
 	@Override
 	public String readItemList(String articleReadFrom) {
@@ -531,10 +572,22 @@ public class QuorumServer extends ReplicaServer {
 				return Utils.stringToByte(COMMAND_FAILED
 						+ COMMAND_PARAM_SEPARATOR);
 			}
-		} else if (request.startsWith(READ_COMMAND)) {
-			// need to return back the readItem
+		}
+		/**
+		 * <code>else if (request.startsWith(READ_COMMAND_ENTIRE_BB)) {
+		// this is invoked by client, but this should not be used here
+		return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
+				+ readItemList("0"));
+		} </code>
+		 */
+		else if (request.startsWith(READ_COMMAND)) {
+			// need to return the latest article seen by me
 			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
-					+ readItemList("0"));
+					+ readItemLatest());
+		} else if (request.startsWith(READ_LATEST_INT)) {
+			// need to return the latest article seen by me
+			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
+					+ readItemLatest());
 		} else if (request.startsWith(WRITE_COMMAND)) {
 			return Utils.stringToByte(post(request
 					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
@@ -542,6 +595,17 @@ public class QuorumServer extends ReplicaServer {
 		}
 		return Utils.stringToByte(INVALID_COMMAND);
 
+	}
+
+	/**
+	 * A replica will invoke this command to ask the read quorum to give the
+	 * latest Article which it has seen.
+	 * 
+	 * @return
+	 */
+	private String readItemLatest() {
+
+		return null;
 	}
 
 	private byte[] parseBytesFromArticleList(List<Article> articles) {

@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.Properties;
 
 public class Props {
+	private static final String DEFAULT_SERVER_THREAD = "10";
+
 	public static String ENCODING;
 
 	public static int WRITER_SERVER_THREADS;
@@ -26,6 +28,8 @@ public class Props {
 
 	public static int QUORUM_SYNC_TIME_MILLIS = 5000;
 
+	public static String TEST_ARTICLES_TO_POPULATE;
+
 	// static{
 	// loadProperties("config.properties");
 	// }
@@ -38,23 +42,23 @@ public class Props {
 
 			// TODO: validate the port numbers before using
 
-			READER_SERVER_THREADS = Integer.parseInt(prop
-					.getProperty("serverWriterThreads"));
-			WRITER_SERVER_THREADS = Integer.parseInt(prop
-					.getProperty("serverReaderThreads"));
+			READER_SERVER_THREADS = Integer.parseInt(prop.getProperty(
+					"serverWriterThreads", DEFAULT_SERVER_THREAD));
+			WRITER_SERVER_THREADS = Integer.parseInt(prop.getProperty(
+					"serverReaderThreads", DEFAULT_SERVER_THREAD));
 
 			SERVER_EXTERNAL_PORT = Integer.parseInt(prop
 					.getProperty("serverExternalPort"));
-			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop
-					.getProperty("externalServerThreads"));
+			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty(
+					"externalServerThreads", DEFAULT_SERVER_THREAD));
 
 			SERVER_INTERNAL_PORT = Integer.parseInt(prop
 					.getProperty("serverInternalPort"));
-			INTERNAL_SERVER_THREADS = Integer.parseInt(prop
-					.getProperty("internalServerThreads"));
+			INTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty(
+					"internalServerThreads", DEFAULT_SERVER_THREAD));
 
-			COORDINATOR_SERVER_THREADS = Integer.parseInt(prop
-					.getProperty("coordinatorServerThreads"));
+			COORDINATOR_SERVER_THREADS = Integer.parseInt(prop.getProperty(
+					"coordinatorServerThreads", DEFAULT_SERVER_THREAD));
 			COORDINATOR_PORT = Integer.parseInt(prop
 					.getProperty("coordinatorPort"));
 
@@ -66,6 +70,8 @@ public class Props {
 					.getProperty("totalNetworkTimeout"));
 			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop.getProperty(
 					"quorumSyncTimeout", "10000"));
+			TEST_ARTICLES_TO_POPULATE = prop.getProperty(
+					"testArticlesToPublish");
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

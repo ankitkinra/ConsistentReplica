@@ -39,6 +39,8 @@ public class BulletinBoard {
 			 * if article is already present, we need to update the reply list
 			 * using the addReply method
 			 */
+		} catch (Exception e) {
+			e.printStackTrace();
 		} finally {
 
 			writeL.unlock();
@@ -157,9 +159,9 @@ public class BulletinBoard {
 		// TODO: Check if returns an increasing order iterator or not.
 		readL.lock();
 		try {
-			Iterator<Integer> it = map.descendingKeySet().descendingIterator();
-			while (it.hasNext()) {
-				BulletinBoardEntry boardEntry = map.get(it.next());
+			//Iterator<Integer> it = map.descendingKeySet().descendingIterator();
+			for (Entry<Integer, BulletinBoardEntry> entry : map.entrySet()) {
+				BulletinBoardEntry boardEntry = entry.getValue();
 				Article article = boardEntry.getArticle();
 				if (article.getParentId() == 0) {
 					// TODO: create a copy of the object before passing here
@@ -256,6 +258,9 @@ public class BulletinBoard {
 
 	private static void mergeTwoBBs(BulletinBoard bbToMergeIn,
 			BulletinBoard bbTwo) {
+		/**
+		 * BulletinBoardEntry contains <article, replyList>
+		 */
 		Collection<BulletinBoardEntry> entries = bbTwo.map.values();
 		for (BulletinBoardEntry entry : entries) {
 			/**
@@ -278,8 +283,12 @@ public class BulletinBoard {
 			 * null				8,A8,6,<>
 			 * </code>
 			 */
-			BulletinBoardEntry boardEntry = bbToMergeIn.map.get(entry
-					.getArticle().getId());
+			Article secondArticle = entry.getArticle();
+			BulletinBoardEntry boardEntryToMergeIn = null;
+			if (secondArticle != null) {
+				boardEntryToMergeIn = bbToMergeIn.map
+						.get(secondArticle.getId());
+			}
 			/**
 			 * <pre>
 			 * Case 1:
@@ -293,7 +302,7 @@ public class BulletinBoard {
 			 * reply list of the merged entity and hence it will be automatically handled
 			 * </pre>
 			 */
-			if (boardEntry == null) {
+			if (boardEntryToMergeIn == null) {
 				/*
 				 * If mainBB or bbToMergeIn does not have an entry, then this is
 				 * as latest as we are going to get hence simply add the
@@ -313,8 +322,8 @@ public class BulletinBoard {
 				 * case 2: Article is not null, hence no new information to update, but need to merge list
 				 * </pre>
 				 */
-				if (boardEntry.getArticle() == null) {
-					boardEntry.setArticle(entry.getArticle());
+				if (boardEntryToMergeIn.getArticle() == null) {
+					boardEntryToMergeIn.setArticle(entry.getArticle());
 					// a new parent could have come and a new replyList could
 					// have come
 					// need to take care only of the reply list, as parent id
@@ -322,7 +331,8 @@ public class BulletinBoard {
 				}
 				if (entry.getReplyIdList() != null) {
 					// merge reply list
-					boardEntry.getReplyIdList().addAll(entry.getReplyIdList());
+					boardEntryToMergeIn.getReplyIdList().addAll(
+							entry.getReplyIdList());
 				}
 
 			}
@@ -372,6 +382,18 @@ public class BulletinBoard {
 			}
 			replyList.add(id);
 		}
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("BulletinBoardEntry [article=");
+			builder.append(article);
+			builder.append(", replyList=");
+			builder.append(replyList);
+			builder.append("]");
+			return builder.toString();
+		}
+
 	}
 
 	public List<Article> getArticlesFrom(int lastSyncArticleId) {
@@ -417,13 +439,15 @@ public class BulletinBoard {
 				Article a = null;
 				try {
 					a = Article.parseArticle(art);
+					System.out.println("Parsed article; a = " + a);
 					if (a.isRoot()) {
 						bb.addArticle(a);
 					} else {
 						bb.addArticleReply(a);
 					}
 				} catch (IllegalArgumentException e) {
-
+					e.printStackTrace();
+					throw e;
 				}
 			}
 		}

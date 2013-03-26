@@ -59,7 +59,11 @@ public class QuorumServer extends ReplicaServer {
 		} catch (IOException e) {
 			logger.error("Maybe the coordinator has died", e);
 			this.stop();
+		} catch (RuntimeException e) {
+			logger.error("Unknown exception caught in sync", e);
+			throw e;
 		}
+
 	}
 
 	private void mergeResponsesWithLocal(HashMap<Machine, String> responseMap) {
@@ -80,15 +84,21 @@ public class QuorumServer extends ReplicaServer {
 				logger.info("Sending for parse = " + articles);
 				mergedBulletinBoard = BulletinBoard
 						.parseBBFromArticleList(articles);
+				logger.info(String
+						.format("After parsing articles =%s, mergedBulletinBoard  = %s",
+								articles, mergedBulletinBoard));
 				first = false;
 
 			} else {
 				String articles = machineBBStr.getValue().substring(
 						READ_QUORUM_RESPONSE.length()
 								+ COMMAND_PARAM_SEPARATOR.length());
-				logger.info("Sending for parse = " + articles);
+
 				BulletinBoard bbThis = BulletinBoard
 						.parseBBFromArticleList(articles);
+				logger.info(String
+						.format("After parsing articles =%s, mergedBulletinBoard  = %s",
+								articles, bbThis));
 				// now merge
 				logger.info("Two bbs to merge = " + mergedBulletinBoard
 						+ "\nTwo=" + bbThis);
@@ -98,7 +108,9 @@ public class QuorumServer extends ReplicaServer {
 
 		}
 		// once the bulletinBoard is merged, we can just replace
-		this.bb.mergeWithMe(mergedBulletinBoard);
+		if (mergedBulletinBoard != null) {
+			this.bb.mergeWithMe(mergedBulletinBoard);
+		}
 
 	}
 
@@ -621,8 +633,14 @@ public class QuorumServer extends ReplicaServer {
 				coordinatorPort);
 		try {
 			qs.start();
-			Article a = new Article(0, 0, "t1", "c1");
-			qs.post(a.toString());
+			/*
+			 * Article a = new Article(0, 0, "t1", "c1"); qs.post(a.toString());
+			 */
+
+			/**
+			 * Try to post articles which are in the the config file
+			 */
+			qs.testPostArticles(Props.TEST_ARTICLES_TO_POPULATE);
 			// System.out.println(qs.readItemList("0"));
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -630,7 +648,24 @@ public class QuorumServer extends ReplicaServer {
 		}
 
 	}
-	
+
+	private void testPostArticles(String articlesToPublish) {
+		if (!Utils.isEmpty(articlesToPublish)) {
+			/**
+			 * need to parse articlesToPublish and get list of articles to
+			 * publish
+			 */
+			String[] brokenArticleStrings = articlesToPublish
+					.split(COMMAND_PARAM_SEPARATOR);
+			for (String articleStr : brokenArticleStrings) {
+				// this is publishing to the quorum
+				logger.info("$$$$$$$$$$$$$$$$$Test article publishing to the quorum; article = "
+						+ articleStr);
+				this.post(articleStr);
+			}
+		}
+	}
+
 	public void stop() {
 		super.stop();
 		this.externalTcpServer.stop();

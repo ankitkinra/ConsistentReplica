@@ -15,6 +15,7 @@ import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.AbstractServer;
 import org.umn.distributed.consistent.server.ReplicaServer;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUEST;
 
 public class Client {
 	private Logger logger = Logger.getLogger(this.getClass());
@@ -54,7 +55,7 @@ public class Client {
 
 	private void postArticle(Article article, Machine machine) {
 		try {
-			String command = ReplicaServer.WRITE_COMMAND
+			String command = CLIENT_REQUEST.POST.name()
 					+ AbstractServer.COMMAND_PARAM_SEPARATOR + article;
 			byte resp[] = TCPClient.sendData(machine,
 					Utils.stringToByte(command));
@@ -111,7 +112,7 @@ public class Client {
 		try {
 			// Start with id 1. This can be changed later to handle only
 			// specific list reads
-			String command = ReplicaServer.READ_COMMAND
+			String command = CLIENT_REQUEST.READ_ITEMS.name()
 					+ ReplicaServer.COMMAND_PARAM_SEPARATOR + 1;
 			byte resp[] = TCPClient.sendData(machine,
 					Utils.stringToByte(command));
@@ -125,7 +126,8 @@ public class Client {
 				System.out
 						.println("****************************************************");
 			} else {
-				System.out.println("Error reading article list from " + machine);
+				System.out
+						.println("Error reading article list from " + machine);
 			}
 		} catch (IOException e) {
 			logger.error("Error adding article", e);
@@ -134,7 +136,7 @@ public class Client {
 
 	private void readArticle(Machine machine, String id) {
 		try {
-			String command = ReplicaServer.READITEM_COMMAND
+			String command = CLIENT_REQUEST.READ_ITEM.name()
 					+ ReplicaServer.COMMAND_PARAM_SEPARATOR + id;
 			byte resp[] = TCPClient.sendData(machine,
 					Utils.stringToByte(command));
@@ -181,19 +183,19 @@ public class Client {
 					String articleStr = command.substring(2);
 					Article article = Article.parseArticle(articleStr);
 					client.postArticle(article, machine);
-//					String articleParams[] = articleStr.split("\\|");
-//					if (articleParams.length != 3) {
-//						System.out.println("Illegal articl format");
-//					} else {
-//						int parentId = 0;
-//						try {
-//							parentId = Integer.parseInt(articleParams[0]);
-//						} catch (NumberFormatException nfe) {
-//							System.out.println("Invalid parentId");
-//						}
-//						client.postArticle(new Article(0, parentId,
-//								articleParams[1], articleParams[2]), machine);
-//					}
+					// String articleParams[] = articleStr.split("\\|");
+					// if (articleParams.length != 3) {
+					// System.out.println("Illegal articl format");
+					// } else {
+					// int parentId = 0;
+					// try {
+					// parentId = Integer.parseInt(articleParams[0]);
+					// } catch (NumberFormatException nfe) {
+					// System.out.println("Invalid parentId");
+					// }
+					// client.postArticle(new Article(0, parentId,
+					// articleParams[1], articleParams[2]), machine);
+					// }
 				}
 			}
 		} catch (Exception e) {

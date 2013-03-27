@@ -242,7 +242,7 @@ public class QuorumServer extends ReplicaServer {
 					String str = null;
 					// try {
 					str = Utils.byteToString(wr.dataRead, Props.ENCODING);
-					if (str.equals(COMMAND_SUCCESS)) {
+					if (str.startsWith(COMMAND_SUCCESS)) {
 						writeStatus.put(wr.serverToWrite, true);
 					} else {
 						// basically failed
@@ -559,7 +559,7 @@ public class QuorumServer extends ReplicaServer {
 			 */
 			mergeLatestArticleFromQuorum();
 			return parseBytesFromArticleListWithCommandPrefix(
-					CLIENT_REQUEST.READ_ITEMS.RESPONSE(),
+					COMMAND_SUCCESS,
 					this.bb.getAllArticles());
 		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
 			/**
@@ -573,7 +573,7 @@ public class QuorumServer extends ReplicaServer {
 			Article aRead = this.bb.getArticle(articleToRead);
 
 			StringBuilder response = new StringBuilder(
-					CLIENT_REQUEST.READ_ITEM.RESPONSE());
+					COMMAND_SUCCESS);
 			response.append(COMMAND_PARAM_SEPARATOR).append(
 					aRead != null ? aRead : "");
 			return Utils.stringToByte(response.toString());

@@ -15,6 +15,7 @@ import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUEST;
 
 public class SequentialServer extends ReplicaServer {
 	private Object obj = new Object();
@@ -206,18 +207,18 @@ public class SequentialServer extends ReplicaServer {
 					.stringToByte(write(request
 							.substring((INTERNAL_WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
 									.length())));
-		} else if (request.startsWith(WRITE_COMMAND)) {
+		} else if (request.startsWith(CLIENT_REQUEST.POST.name())) {
 			return Utils.stringToByte(post(request
-					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
+					.substring((CLIENT_REQUEST.POST.name() + COMMAND_PARAM_SEPARATOR)
 							.length())));
-		} else if (request.startsWith(READ_COMMAND)) {
+		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEMS.name())) {
 			// TODO: not needed because no id is being passed now
 			return Utils.stringToByte(readItemList(request
-					.substring((READ_COMMAND + COMMAND_PARAM_SEPARATOR)
+					.substring((CLIENT_REQUEST.READ_ITEMS.name() + COMMAND_PARAM_SEPARATOR)
 							.length())));
-		} else if (request.startsWith(READITEM_COMMAND)) {
+		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
 			return Utils.stringToByte(readItem(request
-					.substring((READITEM_COMMAND + COMMAND_PARAM_SEPARATOR)
+					.substring((CLIENT_REQUEST.READ_ITEM.name() + COMMAND_PARAM_SEPARATOR)
 							.length())));
 		}
 		return Utils.stringToByte(INVALID_COMMAND, Props.ENCODING);

@@ -44,7 +44,7 @@ public class SequentialServer extends ReplicaServer {
 				int id = ((SequentialCoordinator) this.coordinatorServer)
 						.getId();
 				Article article = Article.parseArticle(req);
-//				article.setId(id);
+				// article.setId(id);
 				return writeAsPrimary(article);
 			} else {
 				logger.debug(this.myInfo + " sending posted message " + req
@@ -99,8 +99,19 @@ public class SequentialServer extends ReplicaServer {
 
 	public String localWrite(Article article) {
 		boolean result = false;
+		if(this.bb.getMaxId() + 1 == article.getId()) {
+			if (article.isRoot()) {
+				result = this.bb.addArticle(article);
+			} else {
+				result = this.bb.addArticleReply(article);
+			}
+			if (result) {
+				return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.getId()
+						+ " written";
+			}
+		}
 		synchronized (obj) {
-			while ((this.bb.getMaxId() + 1) != article.getId()) {
+			while ((this.bb.getMaxId() + 1) < article.getId()) {
 				try {
 					logger.debug("Server will wait for the turn of "
 							+ article.getId());
@@ -111,15 +122,11 @@ public class SequentialServer extends ReplicaServer {
 					logger.error("Writer thread interrupted", e);
 				}
 			}
-			if (article.isRoot()) {
-				result = this.bb.addArticle(article);
-			} else {
-				result = this.bb.addArticleReply(article);
+			// Write only if the last entry written has the id one less than
+			// this
+			if (this.bb.getMaxId() + 1 == article.getId()) {
 			}
-		}
-		if (result) {
-			return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.getId()
-					+ " written";
+			obj.notifyAll();
 		}
 		return COMMAND_FAILED + "-" + "Failed writing the article";
 	}
@@ -134,6 +141,9 @@ public class SequentialServer extends ReplicaServer {
 	private boolean writeToReplicas(HashMap<Machine, Boolean> writeStatus,
 			Set<Machine> failedServers, Article article) {
 		logger.debug(this.myInfo + " writing " + article + " to replicas");
+		if (failedServers.size() == 0) {
+			logger.info("No replica to write. Primary will write local only");
+		}
 		final CountDownLatch writelatch = new CountDownLatch(
 				failedServers.size());
 		Set<Machine> serverSet = getMachineList();
@@ -208,18 +218,20 @@ public class SequentialServer extends ReplicaServer {
 							.substring((INTERNAL_WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
 									.length())));
 		} else if (request.startsWith(CLIENT_REQUEST.POST.name())) {
-			return Utils.stringToByte(post(request
-					.substring((CLIENT_REQUEST.POST.name() + COMMAND_PARAM_SEPARATOR)
-							.length())));
+			return Utils
+					.stringToByte(post(request.substring((CLIENT_REQUEST.POST
+							.name() + COMMAND_PARAM_SEPARATOR).length())));
 		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEMS.name())) {
 			// TODO: not needed because no id is being passed now
-			return Utils.stringToByte(readItemList(request
-					.substring((CLIENT_REQUEST.READ_ITEMS.name() + COMMAND_PARAM_SEPARATOR)
-							.length())));
+			return Utils
+					.stringToByte(readItemList(request
+							.substring((CLIENT_REQUEST.READ_ITEMS.name() + COMMAND_PARAM_SEPARATOR)
+									.length())));
 		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
-			return Utils.stringToByte(readItem(request
-					.substring((CLIENT_REQUEST.READ_ITEM.name() + COMMAND_PARAM_SEPARATOR)
-							.length())));
+			return Utils
+					.stringToByte(readItem(request
+							.substring((CLIENT_REQUEST.READ_ITEM.name() + COMMAND_PARAM_SEPARATOR)
+									.length())));
 		}
 		return Utils.stringToByte(INVALID_COMMAND, Props.ENCODING);
 	}

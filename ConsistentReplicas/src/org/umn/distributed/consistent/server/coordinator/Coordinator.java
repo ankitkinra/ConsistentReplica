@@ -20,6 +20,8 @@ public abstract class Coordinator extends AbstractServer {
 	protected AtomicInteger knownMachineID = new AtomicInteger(1);
 
 	private HeartBeat heartBeatThread = new HeartBeat();
+	private Object heartBeatMonitorObj = new Object();
+	private boolean wasHeartBeatSignaled = true;
 
 	protected Coordinator(STRATEGY strategy) {
 		super(strategy, Props.COORDINATOR_PORT,
@@ -73,6 +75,10 @@ public abstract class Coordinator extends AbstractServer {
 
 	protected void registerMachineAction(Machine machineToAdd) {
 		this.addMachine(machineToAdd);
+		synchronized (heartBeatMonitorObj) {
+			wasHeartBeatSignaled = true;
+			heartBeatMonitorObj.notify();
+		}
 		logger.info(machineToAdd
 				+ " added by coordinator to known replica list");
 	}
@@ -86,8 +92,8 @@ public abstract class Coordinator extends AbstractServer {
 	protected void actOnFailedMachine(Machine m) {
 		removeMachine(m.getId());
 	}
-	
-	protected Set<Machine> getHeartbeatMachineList(){
+
+	protected Set<Machine> getHeartbeatMachineList() {
 		return getMachineList();
 	}
 
@@ -106,6 +112,12 @@ public abstract class Coordinator extends AbstractServer {
 			Set<Machine> currentMachines = null;
 			try {
 				while (true) {
+					synchronized (heartBeatMonitorObj) {
+						if (!wasHeartBeatSignaled) {
+							heartBeatMonitorObj.wait(Props.HEARTBEAT_INTERVAL);
+						}
+						wasHeartBeatSignaled = false;
+					}
 					threads = new ArrayList<PingThread>();
 					currentMachines = getHeartbeatMachineList();
 					CountDownLatch latch = new CountDownLatch(
@@ -130,7 +142,6 @@ public abstract class Coordinator extends AbstractServer {
 							actOnFailedMachine(t.serverToUpdate);
 						}
 					}
-					sleep(Props.HEARTBEAT_INTERVAL);
 				}
 			} catch (InterruptedException ie) {
 				logger.error("Heartbeat thread interrupted", ie);

@@ -34,7 +34,8 @@ public abstract class Coordinator extends AbstractServer {
 			throw e;
 		}
 		logger.info("******************************** Coordinator started ********************************");
-		logger.info("Coordinator IP: " + this.myInfo.getIP() + ", Coordinator Port: " + this.myInfo.getPort());
+		logger.info("Coordinator IP: " + this.myInfo.getIP()
+				+ ", Coordinator Port: " + this.myInfo.getPort());
 		logger.info("*************************************************************************************");
 	}
 
@@ -50,9 +51,7 @@ public abstract class Coordinator extends AbstractServer {
 				machineToAdd.setid(knownMachineID.getAndIncrement());
 				builder.append(COMMAND_SUCCESS).append(COMMAND_PARAM_SEPARATOR)
 						.append(machineToAdd.getId());
-				this.addMachine(machineToAdd);
-				logger.info(machineToAdd
-						+ " added by coordinator to known replica list");
+				registerMachineAction(machineToAdd);
 				return Utils.stringToByte(builder.toString());
 			} else if (reqStr.startsWith(GET_REGISTERED_COMMAND)) {
 				logger.debug("Client requested the registered server list");
@@ -72,6 +71,26 @@ public abstract class Coordinator extends AbstractServer {
 		}
 	}
 
+	protected void registerMachineAction(Machine machineToAdd) {
+		this.addMachine(machineToAdd);
+		logger.info(machineToAdd
+				+ " added by coordinator to known replica list");
+	}
+
+	/**
+	 * Extracting this method so that child Coordinators can add custom machine
+	 * operation which a server fails the ping test
+	 * 
+	 * @param m
+	 */
+	protected void actOnFailedMachine(Machine m) {
+		removeMachine(m.getId());
+	}
+	
+	protected Set<Machine> getHeartbeatMachineList(){
+		return getMachineList();
+	}
+
 	public abstract byte[] handleSpecificRequest(String str);
 
 	@Override
@@ -88,7 +107,7 @@ public abstract class Coordinator extends AbstractServer {
 			try {
 				while (true) {
 					threads = new ArrayList<PingThread>();
-					currentMachines = getMachineList();
+					currentMachines = getHeartbeatMachineList();
 					CountDownLatch latch = new CountDownLatch(
 							currentMachines.size());
 					for (Machine currMachine : currentMachines) {
@@ -108,7 +127,7 @@ public abstract class Coordinator extends AbstractServer {
 							logger.error("Unable to update known servers on machine "
 									+ t.serverToUpdate
 									+ ". Removing from known server list");
-							removeMachine(t.serverToUpdate.getId());
+							actOnFailedMachine(t.serverToUpdate);
 						}
 					}
 					sleep(Props.HEARTBEAT_INTERVAL);

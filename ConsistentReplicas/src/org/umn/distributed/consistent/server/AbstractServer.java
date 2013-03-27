@@ -20,7 +20,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected Logger logger = Logger.getLogger(this.getClass());
 
 	public enum STRATEGY {
-		SEQUENTIAL, QUORUM
+		SEQUENTIAL, QUORUM, READ_YOUR_WRITES
 	}
 
 	protected static final String REGISTER_COMMAND = "REGISTER";

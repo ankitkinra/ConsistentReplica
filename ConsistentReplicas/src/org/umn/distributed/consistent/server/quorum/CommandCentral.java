@@ -64,7 +64,7 @@ public class CommandCentral {
 	 * </pre>
 	 */
 	public static enum COORDINATOR_REQUESTS {
-		HEARTBEAT;
+		HEARTBEAT,SYNC;
 		public String RESPONSE() {
 			return this.name() + RESPONSE_SUFFIX;
 		}

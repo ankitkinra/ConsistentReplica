@@ -1,5 +1,6 @@
 package org.umn.distributed.consistent.server.ryw;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -10,9 +11,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
+import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_CALLS;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_REQUESTS;
 
 public class ReadYourWritesCoordinator extends Coordinator {
 
@@ -46,7 +49,8 @@ public class ReadYourWritesCoordinator extends Coordinator {
 			 */
 			int i = 1;
 			String[] splitArr = req[i].split("=");
-			int sentMachineId = Integer.parseInt(splitArr[1]); // to keep consistent
+			int sentMachineId = Integer.parseInt(splitArr[1]); // to keep
+																// consistent
 			splitArr = req[++i].split("=");
 			Set<Machine> successServers = parseServers(splitArr, 1);
 			splitArr = req[++i].split("=");
@@ -90,8 +94,9 @@ public class ReadYourWritesCoordinator extends Coordinator {
 		writeLKnownBackups.lock();
 		try {
 			if (MAX_NUMBER_OF_BACKUP_REPLICAS_TO_MAINTAIN > knownBackups.size()) {
-				syncMachineWithBackups(machineToAdd);
-				knownBackups.put(machineToAdd.getId(), machineToAdd);
+				if (syncMachineWithBackups(machineToAdd)) {
+					knownBackups.put(machineToAdd.getId(), machineToAdd);
+				}
 			}
 		} finally {
 			writeLKnownBackups.unlock();
@@ -164,8 +169,32 @@ public class ReadYourWritesCoordinator extends Coordinator {
 	}
 
 	private boolean syncMachineWithBackups(Machine mt) {
-		// TODO Auto-generated method stub
-		return false;
+		/**
+		 * We need to ask this machine to sync with the backup servers
+		 * 
+		 */
+		StringBuilder command = new StringBuilder(
+				COORDINATOR_REQUESTS.SYNC.name());
+		command.append(COMMAND_PARAM_SEPARATOR);
+		Set<Machine> backUpMachines = getKnownBackupMachineSet();
+		for (Machine m : backUpMachines) {
+			command.append(m);
+		}
+		byte[] dataRead = null;
+		try {
+			dataRead = TCPClient.sendData(mt,
+					Utils.stringToByte(command.toString()));
+		} catch (IOException e) {
+			logger.error("Error while syncing", e);
+			return false;
+		}
+
+		if (Utils.byteToString(dataRead).startsWith(COMMAND_SUCCESS)) {
+			return true;
+		} else {
+			return false;
+		}
+
 	}
 
 	private boolean knownBackupContains(Machine m) {
@@ -205,7 +234,7 @@ public class ReadYourWritesCoordinator extends Coordinator {
 
 	/**
 	 * <pre>
-	 * TODO when calling this method pass a new articleId if existing 
+	 *when calling this method pass a new articleId if existing 
 	 * articleId == -1 only
 	 * </pre>
 	 * 
@@ -215,8 +244,8 @@ public class ReadYourWritesCoordinator extends Coordinator {
 	 */
 	private byte[] getWriteQuorumReturnMessage(Integer articleId,
 			Set<Machine> failedMachines) {
-		String prefix = "WMQ" + COMMAND_PARAM_SEPARATOR + "aid=" + articleId
-				+ COMMAND_PARAM_SEPARATOR;
+		String prefix = "WMQ" + COMMAND_PARAM_SEPARATOR + "aid="
+				+ (articleId > -1 ? articleId : 0) + COMMAND_PARAM_SEPARATOR;
 		return getQuorumReturnMessage(prefix, failedMachines);
 	}
 
@@ -323,7 +352,7 @@ public class ReadYourWritesCoordinator extends Coordinator {
 		}
 
 	}
-	
+
 	public static void main(String[] args) {
 		Props.loadProperties("C:\\Users\\akinra\\git\\ConsistentReplica\\ConsistentReplicas\\config.properties");
 		System.out.println(Props.ENCODING);

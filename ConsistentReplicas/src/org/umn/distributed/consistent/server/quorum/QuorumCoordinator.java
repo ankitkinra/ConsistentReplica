@@ -112,8 +112,8 @@ public class QuorumCoordinator extends Coordinator {
 	 */
 	private byte[] getWriteQuorumReturnMessage(Integer articleId,
 			Set<Machine> failedMachines) {
-		String prefix = "WMQ" + COMMAND_PARAM_SEPARATOR + "aid=" + articleId
-				+ COMMAND_PARAM_SEPARATOR;
+		String prefix = "WMQ" + COMMAND_PARAM_SEPARATOR + "aid="
+				+ (articleId > -1 ? articleId : 0) + COMMAND_PARAM_SEPARATOR;
 		return getQuorumReturnMessage(prefix, failedMachines);
 	}
 

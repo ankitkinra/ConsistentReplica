@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -19,6 +20,7 @@ import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
 import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUEST;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_REQUESTS;
 import org.umn.distributed.consistent.server.quorum.CommandCentral.REQUEST_INTERNAL_SERVER;
 
 public class ReadYourWritesServer extends ReplicaServer {
@@ -89,7 +91,7 @@ public class ReadYourWritesServer extends ReplicaServer {
 
 	private void mergeResponsesWithLocal(HashMap<Machine, String> responseMap) {
 		BulletinBoard mergedBulletinBoard = new BulletinBoard();
-		boolean first = true;
+		
 		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
 			// get BB from string
 			String bbStr = machineBBStr.getValue()
@@ -256,7 +258,48 @@ public class ReadYourWritesServer extends ReplicaServer {
 				successfulServers, failedServers);
 	}
 
-	
+	private String getCompleteBBFromOneServer(List<Machine> serversToPoke) {
+		String responseBBStr = null;
+		if (serversToPoke != null) {
+			if (serversToPoke.contains(myInfo)) {
+				/*
+				 * will never happen if this is a initial sync call
+				 */
+				logger.info("As my machine is the readSet, I am backup and hence no need to sync;myInfo="
+						+ myInfo);
+				serversToPoke.clear();
+			} else {
+
+				Iterator<Machine> mIter = serversToPoke.iterator();
+				while (mIter.hasNext()) {
+					final CountDownLatch readQuorumlatch = new CountDownLatch(1);
+					Machine server = mIter.next();
+					ReadService t = new ReadService(server, readQuorumlatch, -1);
+					t.start();
+					try {
+						t.join(Props.NETWORK_TIMEOUT);
+					} catch (InterruptedException e) {
+						logger.error("Sync read machine interrupted.", e);
+					}
+					if (t.isAlive()) {
+						// thread is still active so we need to interrupt it and
+						// move on
+						t.interrupt();
+
+					} else {
+						// if it is done just record it and exit
+						if (t.dataRead != null) {
+							responseBBStr = Utils.byteToString(t.dataRead);
+							break;
+						}
+					}
+				}
+			}
+
+		}
+		return responseBBStr;
+	}
+
 	private HashMap<Machine, String> getBBFromReadQuorum(int articleReadFrom)
 			throws IOException {
 		/**
@@ -377,7 +420,6 @@ public class ReadYourWritesServer extends ReplicaServer {
 
 	}
 
-	
 	@Override
 	public String readItem(String id) {
 		return this.bb.getArticle(Integer.parseInt(id)).toString();
@@ -493,10 +535,11 @@ public class ReadYourWritesServer extends ReplicaServer {
 			int articleToRead = Integer.parseInt(intStr);
 
 			Article aRead = this.bb.getArticle(articleToRead);
-			if(aRead == null){
-				syncBB(); //TODO or get max Id from backup and check if this is more than latest
+			if (aRead == null) {
+				syncBB(); // TODO or get max Id from backup and check if this is
+							// more than latest
 				aRead = this.bb.getArticle(articleToRead);
-				if(aRead == null){
+				if (aRead == null) {
 					return Utils.stringToByte("Article does not exits");
 				}
 			}
@@ -535,9 +578,35 @@ public class ReadYourWritesServer extends ReplicaServer {
 			return parseBytesFromArticleListWithCommandPrefix(COMMAND_SUCCESS,
 					this.bb.getArticlesFrom(articlesToReadFrom));
 
+		} else if (request.startsWith(COORDINATOR_REQUESTS.SYNC.name())) {
+			/**
+			 * Need to return to the client the local bb which is appended with
+			 * the latest article written across the read quorum
+			 */
+			String backupMachines = request
+					.substring((COORDINATOR_REQUESTS.SYNC.name() + COMMAND_PARAM_SEPARATOR)
+							.length());
+			syncMachineFrom(backupMachines);
+			return Utils.stringToByte(COMMAND_SUCCESS);
 		}
 		return Utils.stringToByte(INVALID_COMMAND);
 
+	}
+
+	private void syncMachineFrom(String backupMachinesStr) {
+		/**
+		 * We need to initiate sync from the machines that were passed as
+		 * backupMachines
+		 */
+		List<Machine> backupMachines = Machine.parseList(backupMachinesStr);
+		String fullBBStr = getCompleteBBFromOneServer(backupMachines);
+		BulletinBoard fullBBFromBackup = new BulletinBoard();
+		if (fullBBStr != null) {
+			BulletinBoard.parseAndAddBBEntriesIntoBB(fullBBFromBackup,
+					fullBBStr);
+			this.bb.mergeWithMe(fullBBFromBackup);
+			this.lastSyncedId = this.bb.getMaxId();
+		}
 	}
 
 	public void mergeLatestArticleFromQuorum() {
@@ -615,7 +684,6 @@ public class ReadYourWritesServer extends ReplicaServer {
 			qs.testPostArticles(Props.TEST_ARTICLES_TO_POPULATE);
 			// System.out.println(qs.readItemList("0"));
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -641,12 +709,14 @@ public class ReadYourWritesServer extends ReplicaServer {
 	public void stop() {
 		super.stop();
 		this.externalTcpServer.stop();
-		
+
 	}
 
 	@Override
 	public String readItemList(String req) {
-		// TODO Auto-generated method stub
+		/**
+		 * Not needed by me
+		 */
 		return null;
 	}
 }

@@ -237,4 +237,19 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	public abstract byte[] handleSpecificRequest(String request);
+	
+
+	public void startElection() {
+		/**
+		 * <pre>
+		 * 1. Need to ask to all the clients in the knownClients.ceilingMap(own.machineId()) to start
+		 * election 
+		 * 2. if none of the machines respond then, I win election and send the new message to the knownClients.tailMap()
+		 * 3. If a startElection message is received from a client
+		 * a) From lower id
+		 * </pre>
+		 */
+	}
+
 }
+

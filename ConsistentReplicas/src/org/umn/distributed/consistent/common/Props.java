@@ -69,7 +69,7 @@ public class Props {
 			NETWORK_TIMEOUT = Integer.parseInt(prop
 					.getProperty("totalNetworkTimeout"));
 			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop.getProperty(
-					"quorumSyncTimeout", "10000"));
+					"quorumSyncTimeout", "100000"));
 			TEST_ARTICLES_TO_POPULATE = prop.getProperty(
 					"testArticlesToPublish");
 		} catch (IOException ex) {

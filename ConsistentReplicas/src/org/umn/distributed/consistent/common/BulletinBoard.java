@@ -116,6 +116,24 @@ public class BulletinBoard {
 		}
 	}
 
+	public Article getMaxArticle() {
+		readL.lock();
+		try {
+			if (map.size() > 0) {
+				BulletinBoardEntry entry = map.lastEntry().getValue();
+				if (entry != null) {
+					return entry.getArticle();
+				} else {
+					return null;
+				}
+			} else {
+				return null;
+			}
+		} finally {
+			readL.unlock();
+		}
+	}
+
 	public Set<Integer> getReplyIdList(int id) {
 		readL.lock();
 		try {
@@ -436,6 +454,27 @@ public class BulletinBoard {
 					.tailMap(entry.getKey()) : null;
 			if (tailMap != null) {
 				for (Entry<Integer, BulletinBoardEntry> entryItr : tailMap
+						.entrySet()) {
+					Article article = entryItr.getValue().getArticle();
+					if (article != null) {
+						articles.add(article);
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			readL.unlock();
+		}
+		return articles;
+	}
+
+	public List<Article> getAllArticles() {
+		List<Article> articles = new LinkedList<Article>();
+		readL.lock();
+		try {
+			if (map != null && map.size() > 0) {
+				for (Entry<Integer, BulletinBoardEntry> entryItr : map
 						.entrySet()) {
 					Article article = entryItr.getValue().getArticle();
 					if (article != null) {

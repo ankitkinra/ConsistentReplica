@@ -15,20 +15,19 @@ import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
-import org.umn.distributed.consistent.server.AbstractServer;
 import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
 import org.umn.distributed.consistent.server.coordinator.CoordinatorClientCallFormatter;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUEST;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.REQUEST_INTERNAL_SERVER;
 
 public class QuorumServer extends ReplicaServer {
 	/**
-	 * TODO things that we need to handle at server level
-	 * 
 	 * <pre>
 	 * a) Calls from the external client and their responses
-	 * 		i) ReadItemList == returns the local bb with latest Article retrieved from Quorum
+	 * 		i) ReadItemList == returns the local bb appended latest Article retrieved from Quorum
 	 * 		ii) ReadItem == returns the exact article requested by the client, as ReadItemList would be invoked 
-	 * 						before we will have all the articles needed by the client which include the local replica 
+	 * 						before this and we will have all the articles needed by the client which include the local replica 
 	 * 						articles along with the max written article.
 	 * 		iii) Post == when the client gives an article to be posted, need to assemble the write quorum [after asking coordinator] and get this written out to the quorum
 	 * b) Calls from the internal replica servers and their responses
@@ -36,27 +35,15 @@ public class QuorumServer extends ReplicaServer {
 	 * 		ii) ReadItemsFromID -- Call from an internal server with an articleId and we need to return all the articles after this number
 	 * 		iii) WriteArticle -- Write an article in local BB, this will be a well formed article with an Id and everything 
 	 * 		iv) Election calls TODO
-	 * c) Calls to internal replica servers and their responses
-	 * 		i) GetLatestArticle -- Call to get latest Article in replicas BB
-	 * 		ii) GetArticlesFrom -- Call to get all articles from a particular Article ID 
-	 * 		iii) WriteArticle -- Need to send an article to a replica, who will write the same in its local bb
-	 * 		iv) Election calls TODO
 	 * d) Calls to Quorum Coordinator and their responses
 	 * 		i) GetReadQuorum
 	 * 		ii) GetWriteQuorumAndArticleId
 	 * 		iii) Register
 	 * e) Call from Quorum Coordinator
 	 * 		i) Heartbeat
-	 * 		
+	 * 
 	 * </pre>
 	 */
-	public static final String READ_LATEST_INT = "READ_LATEST_INT"; // READ
-																	// latest
-																	// article
-																	// from
-																	// internal
-																	// replica
-	public static final String READ_COMMAND_ENTIRE_BB = "READ_Q_COMPLETE"; // UNUSED
 
 	private static final String READ_BB_COMMAND_COMPLETE = READ_QUORUM_COMMAND
 			+ "-FROM_ID=%%ARTICLE_ID%%";
@@ -75,7 +62,7 @@ public class QuorumServer extends ReplicaServer {
 		/**
 		 * assemble read quorum, which can contain at least one server (in a one
 		 * cluster environment) Now merge the BB of read quorum replace own.bb
-		 * with merged bb : shadow copying in a syncronized method
+		 * with merged bb : shadow copying in a synchronized method
 		 * 
 		 */
 		HashMap<Machine, String> responseMap;
@@ -108,7 +95,7 @@ public class QuorumServer extends ReplicaServer {
 		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
 			// get BB from string
 			String bbStr = machineBBStr.getValue().substring(
-					READ_QUORUM_RESPONSE.length()
+					COMMAND_SUCCESS.length()
 							+ COMMAND_PARAM_SEPARATOR.length());
 			// TODO: I am not sure about this. looks like you always have
 			// READ_QUORUM_RESPONSE + COMMAND_PARAM_SEPARATOR
@@ -191,7 +178,7 @@ public class QuorumServer extends ReplicaServer {
 				int articleId = 0;
 				do {
 					try {
-						articleId = populatWriteQuorum(articleId,
+						articleId = populateWriteQuorum(articleId,
 								successfulServers, failedServers);
 						aToWrite.setId(articleId);
 						executeWriteRequestOnWriteQuorum(writeStatus,
@@ -292,7 +279,7 @@ public class QuorumServer extends ReplicaServer {
 		}
 	}
 
-	private int populatWriteQuorum(Integer articleId,
+	private int populateWriteQuorum(Integer articleId,
 			HashSet<Machine> successfulServers, HashSet<Machine> failedServers)
 			throws IOException {
 		return CoordinatorClientCallFormatter.getArticleIdWithWriteQuorum(
@@ -474,6 +461,7 @@ public class QuorumServer extends ReplicaServer {
 	}
 
 	private class ReadService extends Thread {
+
 		Machine serverToRead;
 		CountDownLatch latchToDecrement;
 		byte[] dataRead;
@@ -489,8 +477,25 @@ public class QuorumServer extends ReplicaServer {
 		@Override
 		public void run() {
 			try {
-				String command = READ_BB_COMMAND_COMPLETE.replaceAll(
-						"%%ARTICLE_ID%%", String.valueOf(articlesToReadFrom));
+				String command = null;
+				if (articlesToReadFrom == -1) {
+					// cannot append -1 in the command as it messes with the
+					// command parameter separator logic
+					// read latest
+					command = REQUEST_INTERNAL_SERVER.READ_LATEST_ITEM.name();
+
+				} else {
+					// read from articleId
+					StringBuilder commandBuilder = new StringBuilder(
+							REQUEST_INTERNAL_SERVER.READ_ITEMS_FROM_ID.name());
+
+					commandBuilder.append(COMMAND_PARAM_SEPARATOR);
+					commandBuilder.append(articlesToReadFrom);
+					command = commandBuilder.toString();
+
+				}
+				logger.info("command being sent from the ReadService is "
+						+ command);
 				dataRead = TCPClient.sendData(this.serverToRead,
 						Utils.stringToByte(command));
 			} catch (IOException e) {
@@ -520,7 +525,7 @@ public class QuorumServer extends ReplicaServer {
 		@Override
 		public void run() {
 			try {
-				String command = WRITE_QUORUM_COMMAND + "-"
+				String command = REQUEST_INTERNAL_SERVER.WRITE_ARTICLE + "-"
 						+ articleToWrite.toString();
 				dataRead = TCPClient.sendData(this.serverToWrite,
 						Utils.stringToByte(command, Props.ENCODING));
@@ -543,74 +548,104 @@ public class QuorumServer extends ReplicaServer {
 	 */
 	@Override
 	public byte[] handleSpecificRequest(String request) {
-		String[] req = request.split(COMMAND_PARAM_SEPARATOR);
-		logger.info("$$$$$$$$$$$$Message received at quorumServer" + req);
-		if (request.startsWith(READ_QUORUM_COMMAND)) {
-			// need to get bb converted to string from a specific id
-			// this is local read, which is the same as the client thing
-			int lastSyncArticleId = 0;
-			String[] arrStr = req[1]
-					.split(AbstractServer.COMMAND_VALUE_SEPARATOR);
-			lastSyncArticleId = Integer.parseInt(arrStr[1]);
-			List<Article> articles = this.bb.getArticlesFrom(lastSyncArticleId);
-			return parseBytesFromArticleList(articles);
-		} else if (request.startsWith(WRITE_QUORUM_COMMAND)) {
-			write(req[1]);
-			return Utils.stringToByte(COMMAND_SUCCESS);
-			// write local
-
-		} else if (request.startsWith(READITEM_COMMAND)) {
-			// need an id to read
-			String idToRead = request
-					.substring((READITEM_COMMAND + COMMAND_PARAM_SEPARATOR)
+		String[] reqBrokenOnCommandParamSeparator = request
+				.split(COMMAND_PARAM_SEPARATOR);
+		logger.info("$$$$$$$$$$$$Message received at quorumServer"
+				+ reqBrokenOnCommandParamSeparator);
+		if (request.startsWith(CLIENT_REQUEST.READ_ITEMS.name())) {
+			/**
+			 * Need to return to the client the local bb which is appended with
+			 * the latest article written across the read quorum
+			 */
+			mergeLatestArticleFromQuorum();
+			return parseBytesFromArticleListWithCommandPrefix(
+					CLIENT_REQUEST.READ_ITEMS.RESPONSE(),
+					this.bb.getAllArticles());
+		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
+			/**
+			 * FORMAT: READ_ITEM-<int>
+			 */
+			String intStr = request
+					.substring((CLIENT_REQUEST.READ_ITEM.name() + COMMAND_PARAM_SEPARATOR)
 							.length());
-			String article = readItem(idToRead);
-			if (article != null) {
-				return Utils.stringToByte(COMMAND_SUCCESS
-						+ COMMAND_PARAM_SEPARATOR + article);
-			} else {
-				return Utils.stringToByte(COMMAND_FAILED
-						+ COMMAND_PARAM_SEPARATOR);
-			}
+			int articleToRead = Integer.parseInt(intStr);
+
+			Article aRead = this.bb.getArticle(articleToRead);
+
+			StringBuilder response = new StringBuilder(
+					CLIENT_REQUEST.READ_ITEM.RESPONSE());
+			response.append(COMMAND_PARAM_SEPARATOR).append(
+					aRead != null ? aRead : "");
+			return Utils.stringToByte(response.toString());
+		} else if (request.startsWith(CLIENT_REQUEST.POST.name())) {
+			/**
+			 * FORMAT: POST-AID=<int>
+			 */
+			return Utils
+					.stringToByte(post(request.substring((CLIENT_REQUEST.POST
+							.name() + COMMAND_PARAM_SEPARATOR).length())));
 		}
-		/**
-		 * <code>else if (request.startsWith(READ_COMMAND_ENTIRE_BB)) {
-		// this is invoked by client, but this should not be used here
-		return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
-				+ readItemList("0"));
-		} </code>
-		 */
-		else if (request.startsWith(READ_COMMAND)) {
-			// need to return the latest article seen by me
+		// internal server request
+		else if (request.startsWith(REQUEST_INTERNAL_SERVER.WRITE_ARTICLE
+				.name())) {
+			// write local
+			return Utils.stringToByte(write(reqBrokenOnCommandParamSeparator[1]));
+		} else if (request.startsWith(REQUEST_INTERNAL_SERVER.READ_LATEST_ITEM
+				.name())) {
 			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
-					+ readItemLatest());
-		} else if (request.startsWith(READ_LATEST_INT)) {
-			// need to return the latest article seen by me
-			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
-					+ readItemLatest());
-		} else if (request.startsWith(WRITE_COMMAND)) {
-			return Utils.stringToByte(post(request
-					.substring((WRITE_COMMAND + COMMAND_PARAM_SEPARATOR)
-							.length())));
+					+ this.bb.getMaxArticle());
+		} else if (request
+				.startsWith(REQUEST_INTERNAL_SERVER.READ_ITEMS_FROM_ID.name())) {
+			/**
+			 * FORMAT: READ_ITEMS_FROM_ID-<int>
+			 */
+			String articlesToReadFromStr = request
+					.substring((REQUEST_INTERNAL_SERVER.READ_ITEMS_FROM_ID
+							.name() + COMMAND_PARAM_SEPARATOR).length());
+			int articlesToReadFrom = Integer.parseInt(articlesToReadFromStr);
+
+			return parseBytesFromArticleListWithCommandPrefix(COMMAND_SUCCESS,
+					this.bb.getArticlesFrom(articlesToReadFrom));
+
 		}
 		return Utils.stringToByte(INVALID_COMMAND);
 
 	}
 
-	/**
-	 * A replica will invoke this command to ask the read quorum to give the
-	 * latest Article which it has seen.
-	 * 
-	 * @return
-	 */
-	private String readItemLatest() {
+	public void mergeLatestArticleFromQuorum() {
+		try {
+			HashMap<Machine, String> responseMap = getLatestArticleFromReadQuorum();
+			mergeResponsesWithLocal(responseMap);
+		} catch (IOException e) {
+			logger.error("Maybe the coordinator has died", e);
+			this.stop();
+		}
 
-		return null;
 	}
 
-	private byte[] parseBytesFromArticleList(List<Article> articles) {
-		logger.info("READ_QUORUM_RESPONSE;articles=" + articles);
-		StringBuilder sb = new StringBuilder(READ_QUORUM_RESPONSE);
+	private HashMap<Machine, String> getLatestArticleFromReadQuorum()
+			throws IOException {
+		HashSet<Machine> successfulServers = new HashSet<Machine>();
+		HashSet<Machine> failedServers = new HashSet<Machine>();
+		HashMap<Machine, String> responseMap = new HashMap<Machine, String>();
+		do {
+			try {
+				populateReadQuorum(successfulServers, failedServers);
+				executeReadRequestOnReadQuorum(responseMap, successfulServers,
+						failedServers, -1);
+			} catch (IOException e) {
+				logger.error("quorum population failed", e);
+				throw e;
+			}
+			waitIfFailedServers(failedServers);
+		} while (failedServers.size() > 0);
+		return responseMap;
+	}
+
+	private byte[] parseBytesFromArticleListWithCommandPrefix(
+			String commandPrefix, List<Article> articles) {
+
+		StringBuilder sb = new StringBuilder(commandPrefix);
 		sb.append(COMMAND_PARAM_SEPARATOR);
 		for (Article a : articles) {
 			sb.append(a.toString()).append(LIST_SEPARATOR);

@@ -9,6 +9,7 @@ import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.coordinator.Coordinator;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_CALLS;
 
 public class QuorumCoordinator extends Coordinator {
 
@@ -32,7 +33,7 @@ public class QuorumCoordinator extends Coordinator {
 	@Override
 	public byte[] handleSpecificRequest(String request) {
 		String[] req = request.split(COMMAND_PARAM_SEPARATOR);
-		if (request.startsWith(GET_READ_QUORUM_COMMAND)) {
+		if (request.startsWith(COORDINATOR_CALLS.GET_READ_QUORUM.name())) {
 			/**
 			 * req[1] == represents SuccessServers req[2] == represents
 			 * FailedServers
@@ -47,7 +48,7 @@ public class QuorumCoordinator extends Coordinator {
 			failedServers = parseServers(splitArr, 1);
 			getReadQuorum(sentMachineId, successServers, failedServers);
 			return getReadQuorumMessage(failedServers);
-		} else if (request.startsWith(GET_WRITE_QUORUM_COMMAND)) {
+		} else if (request.startsWith(COORDINATOR_CALLS.GET_WRITE_QUORUM.name())) {
 			/**
 			 * req[1] == articleId req[2] == represents SuccessServers req[3] ==
 			 * represents FailedServers
@@ -68,7 +69,7 @@ public class QuorumCoordinator extends Coordinator {
 			getWriteQuorum(sentMachineId, successServers, failedServers);
 			return getWriteQuorumReturnMessage(localArticleId, failedServers);
 		}
-		return null;
+		return Utils.stringToByte(INVALID_COMMAND);
 	}
 
 	private Set<Machine> parseServers(String[] serversArr, int index) {

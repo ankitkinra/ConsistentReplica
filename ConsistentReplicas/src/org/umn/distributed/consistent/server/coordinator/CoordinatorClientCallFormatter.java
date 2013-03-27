@@ -10,6 +10,8 @@ import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
 import org.umn.distributed.consistent.common.Utils;
 import org.umn.distributed.consistent.server.AbstractServer;
+import org.umn.distributed.consistent.server.quorum.CommandCentral;
+import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_CALLS;
 
 public class CoordinatorClientCallFormatter {
 
@@ -54,7 +56,7 @@ public class CoordinatorClientCallFormatter {
 			Set<Machine> successMachines, Set<Machine> failedMachines)
 			throws IOException {
 		StringBuilder writeQuorumMessage = new StringBuilder(
-				AbstractServer.GET_WRITE_QUORUM_COMMAND);
+				CommandCentral.COORDINATOR_CALLS.GET_WRITE_QUORUM.name());
 		writeQuorumMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR)
 				.append("M=").append(ownMachine.getId());
 		writeQuorumMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR)
@@ -150,7 +152,7 @@ public class CoordinatorClientCallFormatter {
 			Machine coordinatorMachine, Set<Machine> successMachines,
 			Set<Machine> failedMachines) throws IOException {
 		StringBuilder readMessage = new StringBuilder(
-				AbstractServer.GET_READ_QUORUM_COMMAND);
+				COORDINATOR_CALLS.GET_READ_QUORUM.name());
 		readMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR).append("M=")
 				.append(ownMachine.getId());
 		readMessage.append(AbstractServer.COMMAND_PARAM_SEPARATOR).append("S=")

@@ -7,6 +7,8 @@ import java.util.Properties;
 public class Props {
 	private static final String DEFAULT_SERVER_THREAD = "10";
 
+	private static final String DEFAULT_MAX_PSEUDO_NW_DELAY = "1000";
+
 	public static String ENCODING;
 
 	public static int WRITER_SERVER_THREADS;
@@ -31,6 +33,8 @@ public class Props {
 	public static String TEST_ARTICLES_TO_POPULATE;
 
 	public static int percentIncreaseWriteQuorum = 0;
+
+	public static int maxPseudoNetworkDelay;
 
 	// static{
 	// loadProperties("config.properties");
@@ -84,6 +88,9 @@ public class Props {
 			 * making this in increments of 10 only
 			 */
 			percentIncreaseWriteQuorum = (percentIncreaseWriteQuorum / 10) * 10;
+			
+			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty(
+					"maxPseudoNetworkDelay", DEFAULT_MAX_PSEUDO_NW_DELAY));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

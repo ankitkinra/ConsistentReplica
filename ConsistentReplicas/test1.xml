@@ -1,0 +1,44 @@
+<round>
+	<name>firstRound</name>
+	<operations>
+		<operation>
+			<sno>1</sno>
+			<name>post</name>
+			<params>
+				<entry>
+					<string>root</string>
+					<string>2</string>
+				</entry>
+			</params>
+		</operation>
+		<operation>
+			<sno>2</sno>
+			<name>readItems</name>
+		</operation>
+		<operation>
+			<sno>3</sno>
+			<name>post</name>
+			<params>
+				<entry>
+					<string>root</string>
+					<string>2</string>
+				</entry>
+				<entry>
+					<string>reply</string>
+					<string>2</string>
+				</entry>
+			</params>
+		</operation>
+		<operation>
+			<sno>4</sno>
+			<name>readItem</name>
+			<params>
+				<entry>
+					<string>id</string>
+					<string>2</string>
+				</entry>
+
+			</params>
+		</operation>
+	</operations>
+</round>

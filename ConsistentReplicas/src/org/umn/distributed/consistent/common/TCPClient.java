@@ -4,17 +4,28 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+import java.util.Random;
 
 import org.apache.log4j.Logger;
 
 public class TCPClient {
 	protected static Logger logger = Logger.getLogger(TCPClient.class);
+	private static Random randomDelay = new Random();
 
 	public static byte[] sendData(Machine remoteMachine, byte[] data)
 			throws IOException {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Send " + Utils.byteToString(data) + " to "
 					+ remoteMachine);
+		}
+		// Adding a random delay
+		long delay = randomDelay.nextInt(Props.maxPseudoNetworkDelay);
+		try {
+			Thread.sleep(delay);
+		} catch (InterruptedException e) {
+			LoggingUtils.logError(logger, e,
+					"Error while waiting by thread = %s", Thread
+							.currentThread().getName());
 		}
 		/**
 		 * This will open a local socket and send the data to the remoteMachine

@@ -60,4 +60,39 @@ public class LoggingUtils {
 		Logger.getRootLogger().addAppender(appender);
 	}
 
+	public static void logDebug(Logger log, String format, Object... args) {
+		if (log.isDebugEnabled()) {
+			log.debug(String.format(format, args));
+		}
+	}
+
+	public static void logMessage(Level level, Logger log, String format,
+			Object... args) {
+
+		if (level.equals(Level.DEBUG)) {
+			logDebug(log, format, args);
+		} else {
+			logInfo(log, format, args);
+		}
+
+		// error handled differently
+	}
+
+	public static void logInfo(Logger log, String format, Object... args) {
+		if (log.isInfoEnabled()) {
+			log.info(String.format(format, args));
+		}
+
+	}
+	
+
+	public static void logError(Logger log, Exception e, String format,
+			Object... args) {
+		log.error(String.format(format, args), e);
+	}
+	
+	public static void logError(Logger log, Exception e, String message) {
+		log.error(message, e);
+	}
+
 }

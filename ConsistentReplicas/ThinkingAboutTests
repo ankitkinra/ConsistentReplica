@@ -1,0 +1,26 @@
+Test Case basic requirements as I perceive from client perspective
+1) Should be able to post root articles without reading.
+2) Then download these articles from the servers, either the same or different, depending on the consistency, and display the result, whether it got persisted or not
+3) Should be able to connect to a different server to test the status of the articles posted and display that result as well
+4) Reading the articles and posting random children and then checking the result
+
+Divide the scenario in rounds which are variable, 
+each scenario is executed sequentially and if need be we can persist the articles posted in each round
+so that we can test and mark when we did see these articles 
+
+
+Also include the timer in this application and so we can keep a timer based on three types of operation we carry out and 
+display summary in the end
+
+<xml>
+<clientsToStart number=5/> // all clients will do the following rounds separately
+<rounds>
+<round name="firstRound">
+<post root=1 sno=1/>
+<readItems sno=2/>
+<post root=5 child=5 sno=3/>
+<readItems sno=4/>
+<readItem id=5/>
+</round>
+</rounds>
+</xml>

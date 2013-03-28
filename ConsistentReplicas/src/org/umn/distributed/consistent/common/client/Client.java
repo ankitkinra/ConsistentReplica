@@ -30,7 +30,19 @@ public class Client {
 		this.coordinator = new Machine(coordinatorIp, coordinatorPort);
 	}
 
-	private void startClient() throws Exception {
+	private void postRandom(boolean refreshServers) {
+		if (refreshServers) {
+			try {
+				refreshReplicaServers();
+			} catch (Exception e) {
+				logger.error("Error is replica population", e);
+			}
+		}
+
+	}
+
+	private void refreshReplicaServers() throws Exception {
+
 		byte resp[] = TCPClient.sendData(coordinator,
 				Utils.stringToByte(AbstractServer.GET_REGISTERED_COMMAND));
 		logger.info("resp=" + resp);
@@ -44,10 +56,15 @@ public class Client {
 					.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 							.length());
 			if (replicaStr.length() > 0) {
+				HashMap<Integer, Machine> newMachines = new HashMap<Integer, Machine>();
 				List<Machine> toAdd = Machine.parseList(replicaStr);
 				for (Machine m : toAdd) {
-					this.replicaServerMap.put(m.getId(), m);
+					newMachines.put(m.getId(), m);
 					logger.debug("Added replica " + m + " to client");
+				}
+				if (newMachines.size() > 0) {
+					this.replicaServerMap.clear();
+					this.replicaServerMap.putAll(newMachines);
 				}
 			}
 		}
@@ -165,7 +182,7 @@ public class Client {
 		Props.loadProperties(args[2]);
 		Client client = new Client(args[0], Integer.parseInt(args[1]));
 		try {
-			client.startClient();
+			client.refreshReplicaServers();
 			BufferedReader br = new BufferedReader(new InputStreamReader(
 					System.in));
 			while (true) {

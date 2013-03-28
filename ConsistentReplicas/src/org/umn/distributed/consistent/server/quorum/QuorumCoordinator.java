@@ -13,7 +13,7 @@ import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_C
 
 public class QuorumCoordinator extends Coordinator {
 
-	private boolean sendOwnMachineAsQuorum = false;
+	private boolean sendOwnMachineAsQuorum = true;
 
 	public QuorumCoordinator() {
 		super(STRATEGY.QUORUM);

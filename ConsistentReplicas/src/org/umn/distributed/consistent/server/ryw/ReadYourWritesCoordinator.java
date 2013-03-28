@@ -234,8 +234,8 @@ public class ReadYourWritesCoordinator extends Coordinator {
 
 	/**
 	 * <pre>
-	 *when calling this method pass a new articleId if existing 
-	 * articleId == -1 only
+	 * when calling this method pass a new articleId if existing 
+	 *  articleId == -1 only
 	 * </pre>
 	 * 
 	 * @param articleId
@@ -273,70 +273,107 @@ public class ReadYourWritesCoordinator extends Coordinator {
 		 * convert the remaining set to a list as we need get random servers
 		 * </pre>
 		 */
+		int backupSize = 0;
 		readLKnownBackups.lock();
 		try {
 			logger.debug("Current knownMachine =" + knownBackups.toString());
-
-			int quorumSizeToReturn = 0;
-			if (readQuorum) {
-				quorumSizeToReturn = 1;
-			} else {
-				quorumSizeToReturn = knownBackups.size();
-			}
-			if (failedMachines.size() > 0) {
-				// initiate failedProtocol and send the new machine
-				for (Machine m : failedMachines) {
-					actOnBackupFailed(m);
-				}
-			}
-			// get set of knownMachines and remove successMachines and
-			int machinesToReturn = successMachines.size()
-					+ failedMachines.size() == 0 ? quorumSizeToReturn
-					: (quorumSizeToReturn - successMachines.size());
-			logger.debug(String.format(
-					"getQuorum; machinesToReturn = %s; quorumSizeToReturn=%s",
-					machinesToReturn, quorumSizeToReturn));
-			if (machinesToReturn > 0) {
-				Set<Machine> knownBackupMachineSet = getKnownBackupMachineSet();
-				knownBackupMachineSet.removeAll(successMachines);
-				/*
-				 * the failedmachines will be removed by now from the backup
-				 * machine set fail over processing
-				 */
-
-				if (knownBackupMachineSet.size() > 0) {
-					failedMachines.clear();
-					if (!readQuorum) {
-						// sent the remaining knownBackupMachineSet
-						failedMachines.addAll(knownBackupMachineSet);
-					} else {
-						// if readQuorum then we need to send back just one
-						// backup
-						LinkedList<Machine> machineList = new LinkedList<Machine>();
-						machineList.addAll(knownBackupMachineSet);
-						Collections.shuffle(machineList); // to even out
-															// requests
-						failedMachines.add(machineList.poll());
-
-					}
-
-				} else {
-					/**
-					 * this means that after removing the machine from backup we
-					 * do not have enough clients to create as backup, so we
-					 * cannot continue with the operation !!!!
-					 */
-					// TODO unsafe situation, alarm
-				}
-			} else {
-				// if no more machines to send then we need to clear out
-				// failedSet
-				// as read or write requirement is complete
-				failedMachines.clear();
-			}
-
+			backupSize = knownBackups.size();
 		} finally {
 			readLKnownBackups.unlock();
+		}
+		int quorumSizeToReturn = 0;
+		if (readQuorum) {
+			quorumSizeToReturn = 1;
+		} else {
+			quorumSizeToReturn = backupSize;
+			boolean quorumFormed = false;
+			while (!quorumFormed) {
+				readLKnownBackups.lock();
+				readL.lock();
+				if (MAX_NUMBER_OF_BACKUP_REPLICAS_TO_MAINTAIN <= knownClients
+						.size()) {
+					// then if the quorumSizeToReturn <
+					// MAX_NUMBER_OF_BACKUP_REPLICAS_TO_MAINTAIN
+					if (quorumSizeToReturn < MAX_NUMBER_OF_BACKUP_REPLICAS_TO_MAINTAIN) {
+						// cannot create appropriate quorum need to
+						// sleep,
+						// till we have a server promoted
+						readLKnownBackups.unlock();
+						readL.unlock();
+
+						try {
+							Thread.sleep(Props.HEARTBEAT_INTERVAL);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					} else {
+						quorumFormed = true; // break out of loop
+					}
+				}
+				readLKnownBackups.unlock();
+				readL.unlock();
+			}
+			readLKnownBackups.lock();
+			try {
+				quorumSizeToReturn = knownBackups.size();
+			} finally {
+				readLKnownBackups.unlock();
+			}
+
+		}
+
+		// now we have the appropriate quorum size
+
+		if (failedMachines.size() > 0) {
+			// initiate failedProtocol and send the new machine
+			for (Machine m : failedMachines) {
+				actOnBackupFailed(m);
+			}
+		}
+		// get set of knownMachines and remove successMachines and
+		int machinesToReturn = successMachines.size() + failedMachines.size() == 0 ? quorumSizeToReturn
+				: (quorumSizeToReturn - successMachines.size());
+		logger.debug(String.format(
+				"getQuorum; machinesToReturn = %s; quorumSizeToReturn=%s",
+				machinesToReturn, quorumSizeToReturn));
+		if (machinesToReturn > 0) {
+			Set<Machine> knownBackupMachineSet = getKnownBackupMachineSet();
+			knownBackupMachineSet.removeAll(successMachines);
+			/*
+			 * the failedmachines will be removed by now from the backup machine
+			 * set fail over processing
+			 */
+
+			if (knownBackupMachineSet.size() > 0) {
+				failedMachines.clear();
+				if (!readQuorum) {
+					// sent the remaining knownBackupMachineSet
+					failedMachines.addAll(knownBackupMachineSet);
+				} else {
+					// if readQuorum then we need to send back just one
+					// backup
+					LinkedList<Machine> machineList = new LinkedList<Machine>();
+					machineList.addAll(knownBackupMachineSet);
+					Collections.shuffle(machineList); // to even out
+														// requests
+					failedMachines.add(machineList.poll());
+
+				}
+
+			} else {
+				/**
+				 * this means that after removing the machine from backup we do
+				 * not have enough clients to create as backup, so we cannot
+				 * continue with the operation !!!!
+				 */
+				// TODO unsafe situation, alarm
+			}
+		} else {
+			// if no more machines to send then we need to clear out
+			// failedSet
+			// as read or write requirement is complete
+			failedMachines.clear();
 		}
 
 	}

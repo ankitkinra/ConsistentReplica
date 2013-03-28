@@ -52,6 +52,8 @@ public class QuorumServer extends ReplicaServer {
 	private SyncThread syncThread = new SyncThread(syncLock,
 			Props.QUORUM_SYNC_TIME_MILLIS);
 
+	private HashSet<Machine> firstTimeSyncQuorum = new HashSet<Machine>();
+
 	public QuorumServer(boolean isCoordinator, String coordinatorIP,
 			int coordinatorPort) {
 		super(STRATEGY.QUORUM, isCoordinator, coordinatorIP, coordinatorPort);
@@ -94,9 +96,10 @@ public class QuorumServer extends ReplicaServer {
 		boolean first = true;
 		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
 			// get BB from string
-			String bbStr = machineBBStr.getValue().substring(
-					COMMAND_SUCCESS.length()
-							+ COMMAND_PARAM_SEPARATOR.length());
+			String bbStr = machineBBStr.getValue()
+					.substring(
+							COMMAND_SUCCESS.length()
+									+ COMMAND_PARAM_SEPARATOR.length());
 			// TODO: I am not sure about this. looks like you always have
 			// READ_QUORUM_RESPONSE + COMMAND_PARAM_SEPARATOR
 			// in the response. and still you are checking isEmpty. I think it
@@ -347,6 +350,23 @@ public class QuorumServer extends ReplicaServer {
 		return responseMap;
 	}
 
+	private HashMap<Machine, String> getBBFromMachines(
+			HashSet<Machine> serversToReadFrom, int articleReadFrom)
+			throws IOException {
+		/**
+		 * Any request can be modelled as <code>
+		 * populate the responseMap once from all the machines in the serversToReadFrom collection
+		 * this will help us eliminate the false reads when this machine is newly added to the quorum
+		 * </code>
+		 */
+
+		HashMap<Machine, String> responseMap = new HashMap<Machine, String>();
+		HashSet<Machine> placeHolderServers = new HashSet<Machine>();
+		executeReadRequestOnReadQuorum(responseMap, placeHolderServers,
+				serversToReadFrom, articleReadFrom);
+		return responseMap;
+	}
+
 	private void waitIfFailedServers(HashSet<Machine> failedServers) {
 		if (failedServers.size() > 0) {
 			/**
@@ -558,8 +578,7 @@ public class QuorumServer extends ReplicaServer {
 			 * the latest article written across the read quorum
 			 */
 			mergeLatestArticleFromQuorum();
-			return parseBytesFromArticleListWithCommandPrefix(
-					COMMAND_SUCCESS,
+			return parseBytesFromArticleListWithCommandPrefix(COMMAND_SUCCESS,
 					this.bb.getAllArticles());
 		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
 			/**
@@ -572,8 +591,7 @@ public class QuorumServer extends ReplicaServer {
 
 			Article aRead = this.bb.getArticle(articleToRead);
 
-			StringBuilder response = new StringBuilder(
-					COMMAND_SUCCESS);
+			StringBuilder response = new StringBuilder(COMMAND_SUCCESS);
 			response.append(COMMAND_PARAM_SEPARATOR).append(
 					aRead != null ? aRead : "");
 			return Utils.stringToByte(response.toString());
@@ -589,7 +607,8 @@ public class QuorumServer extends ReplicaServer {
 		else if (request.startsWith(REQUEST_INTERNAL_SERVER.WRITE_ARTICLE
 				.name())) {
 			// write local
-			return Utils.stringToByte(write(reqBrokenOnCommandParamSeparator[1]));
+			return Utils
+					.stringToByte(write(reqBrokenOnCommandParamSeparator[1]));
 		} else if (request.startsWith(REQUEST_INTERNAL_SERVER.READ_LATEST_ITEM
 				.name())) {
 			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
@@ -707,12 +726,28 @@ public class QuorumServer extends ReplicaServer {
 	protected void preRegister() throws Exception {
 		super.preRegister();
 		logger.info("Pre-registered and now syncing");
+		HashSet<Machine> successfulServers = new HashSet<Machine>();
+		CoordinatorClientCallFormatter.getReadQuorum(this.myInfo,
+				coordinatorMachine, successfulServers, firstTimeSyncQuorum);
+
 		syncBB();
 	}
+
 	protected void postRegister() throws IOException {
 		super.postRegister();
 		// start the sync thread
-		//syncBB();
+		HashMap<Machine, String> responseMap = getBBFromMachines(
+				firstTimeSyncQuorum, this.lastSyncedId);
+		logger.info("from postRegister(); before merging;; lastSyncedId=" + lastSyncedId
+				+ ";response=" + responseMap);
+		mergeResponsesWithLocal(responseMap);
+		// doing this instead of calling sync as we want to wait on this
+		// operation
+
+		lastSyncedId = this.bb.getMaxId();
+		logger.info("$$$$$$$from postRegister(); before merging;; =" + this.bb.toString()
+				+ ";\nlastSyncedId=" + lastSyncedId);
+
 		/**
 		 * before we are ready to take requests we need to get upto with all the
 		 * known clients hence we need to initiate the sync, but we need to use

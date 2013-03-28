@@ -44,7 +44,7 @@ public class SequentialServer extends ReplicaServer {
 				int id = ((SequentialCoordinator) this.coordinatorServer)
 						.getId();
 				Article article = Article.parseArticle(req);
-				// article.setId(id);
+				article.setId(id);
 				return writeAsPrimary(article);
 			} else {
 				logger.debug(this.myInfo + " sending posted message " + req
@@ -99,17 +99,6 @@ public class SequentialServer extends ReplicaServer {
 
 	public String localWrite(Article article) {
 		boolean result = false;
-		if(this.bb.getMaxId() + 1 == article.getId()) {
-			if (article.isRoot()) {
-				result = this.bb.addArticle(article);
-			} else {
-				result = this.bb.addArticleReply(article);
-			}
-			if (result) {
-				return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.getId()
-						+ " written";
-			}
-		}
 		synchronized (obj) {
 			while ((this.bb.getMaxId() + 1) < article.getId()) {
 				try {
@@ -125,8 +114,17 @@ public class SequentialServer extends ReplicaServer {
 			// Write only if the last entry written has the id one less than
 			// this
 			if (this.bb.getMaxId() + 1 == article.getId()) {
+				if (article.isRoot()) {
+					result = this.bb.addArticle(article);
+				} else {
+					result = this.bb.addArticleReply(article);
+				}
 			}
 			obj.notifyAll();
+		}
+		if (result) {
+			return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.getId()
+					+ " written";
 		}
 		return COMMAND_FAILED + "-" + "Failed writing the article";
 	}

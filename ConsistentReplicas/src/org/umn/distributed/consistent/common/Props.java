@@ -30,6 +30,8 @@ public class Props {
 
 	public static String TEST_ARTICLES_TO_POPULATE;
 
+	public static int percentIncreaseWriteQuorum = 0;
+
 	// static{
 	// loadProperties("config.properties");
 	// }
@@ -69,9 +71,19 @@ public class Props {
 			NETWORK_TIMEOUT = Integer.parseInt(prop
 					.getProperty("totalNetworkTimeout"));
 			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop.getProperty(
-					"quorumSyncTimeout", "1000000"));
-			TEST_ARTICLES_TO_POPULATE = prop.getProperty(
-					"testArticlesToPublish");
+					"quorumSyncTimeout", "300000"));
+			TEST_ARTICLES_TO_POPULATE = prop
+					.getProperty("testArticlesToPublish");
+			percentIncreaseWriteQuorum = Integer.parseInt(prop.getProperty(
+					"percentIncreaseWrite", "0"));
+			if (percentIncreaseWriteQuorum < 0
+					|| percentIncreaseWriteQuorum >= 100) {
+				percentIncreaseWriteQuorum = 0;
+			}
+			/**
+			 * making this in increments of 10 only
+			 */
+			percentIncreaseWriteQuorum = (percentIncreaseWriteQuorum / 10) * 10;
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

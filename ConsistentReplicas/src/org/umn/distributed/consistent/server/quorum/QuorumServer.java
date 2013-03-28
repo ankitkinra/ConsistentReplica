@@ -704,10 +704,15 @@ public class QuorumServer extends ReplicaServer {
 		}
 	}
 
+	protected void preRegister() throws Exception {
+		super.preRegister();
+		logger.info("Pre-registered and now syncing");
+		syncBB();
+	}
 	protected void postRegister() throws IOException {
 		super.postRegister();
 		// start the sync thread
-		syncBB();
+		//syncBB();
 		/**
 		 * before we are ready to take requests we need to get upto with all the
 		 * known clients hence we need to initiate the sync, but we need to use

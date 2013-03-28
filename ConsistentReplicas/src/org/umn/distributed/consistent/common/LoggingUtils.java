@@ -11,7 +11,7 @@ import org.apache.log4j.PatternLayout;
 import org.apache.log4j.PropertyConfigurator;
 
 public class LoggingUtils {
-	public static final String DEFAULT_DEBUG_PATTERN = "%d{ABSOLUTE} %5p %c{1}:%F:%L - %m%n";
+	public static final String DEFAULT_DEBUG_PATTERN = "%d{dd-mm-yyyy HH:mm:ss,SSS} %5p %c{1}:%F:%L - %m%n";
 	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	private static Logger logger;
 	static {

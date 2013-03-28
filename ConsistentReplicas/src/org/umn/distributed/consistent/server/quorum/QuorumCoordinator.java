@@ -48,7 +48,8 @@ public class QuorumCoordinator extends Coordinator {
 			failedServers = parseServers(splitArr, 1);
 			getReadQuorum(sentMachineId, successServers, failedServers);
 			return getReadQuorumMessage(failedServers);
-		} else if (request.startsWith(COORDINATOR_CALLS.GET_WRITE_QUORUM.name())) {
+		} else if (request
+				.startsWith(COORDINATOR_CALLS.GET_WRITE_QUORUM.name())) {
 			/**
 			 * req[1] == articleId req[2] == represents SuccessServers req[3] ==
 			 * represents FailedServers
@@ -239,10 +240,26 @@ public class QuorumCoordinator extends Coordinator {
 
 	}
 
+	/**
+	 * policy which is derived from the Props file allow us to vary write quorum
+	 * size, for each run of the system only one percent can be used
+	 * 
+	 * @param totalQSize
+	 * @return
+	 */
 	private int[] getReadWriteQSize(int totalQSize) {
 		int[] arr = new int[2];
 		if (totalQSize > 0) {
 			arr[1] = totalQSize / 2 + 1;
+			// percent bump to write quorum
+			logger.info(String.format(
+					"arr[1] = %s ; Props.percentIncreaseWriteQuorum = %s",
+					arr[1], Props.percentIncreaseWriteQuorum));
+			arr[1] = (arr[1] * (100 + Props.percentIncreaseWriteQuorum)) / 100;
+			if (arr[1] > totalQSize) {
+				arr[1] = totalQSize;
+			}
+			logger.info(String.format("New arr[1] = %s ", arr[1]));
 			arr[0] = totalQSize - arr[1] + 1;
 		} else {
 			arr[1] = 0;

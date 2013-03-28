@@ -22,7 +22,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	public enum STRATEGY {
 		SEQUENTIAL, QUORUM, READ_YOUR_WRITES
 	}
-
+	
 	protected static final String REGISTER_COMMAND = "REGISTER";
 	public static final String GET_REGISTERED_COMMAND = "GTRGSTRD";
 

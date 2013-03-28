@@ -35,10 +35,15 @@ public abstract class Coordinator extends AbstractServer {
 		} catch (Exception e) {
 			throw e;
 		}
-		logger.info("******************************** Coordinator started ********************************");
+	}
+	
+	@Override
+	public void showInfo() {
+		logger.info("******************************** Coordinator info ************************************");
 		logger.info("Coordinator IP: " + this.myInfo.getIP()
 				+ ", Coordinator Port: " + this.myInfo.getPort());
 		logger.info("*************************************************************************************");
+		
 	}
 
 	@Override

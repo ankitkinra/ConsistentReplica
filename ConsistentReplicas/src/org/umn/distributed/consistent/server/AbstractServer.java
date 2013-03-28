@@ -22,7 +22,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	public enum STRATEGY {
 		SEQUENTIAL, QUORUM, READ_YOUR_WRITES
 	}
-	
+
 	protected static final String REGISTER_COMMAND = "REGISTER";
 	public static final String GET_REGISTERED_COMMAND = "GTRGSTRD";
 
@@ -37,7 +37,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 
 	public static final String GET_READ_QUORUM_COMMAND = "GRQ";
 	public static final String GET_WRITE_QUORUM_COMMAND = "GWQ";
-	
+
 	public static final String READ_QUORUM_RESPONSE = "RQRESPONSE";
 
 	public static final String COMMAND_PARAM_SEPARATOR = "-";
@@ -47,7 +47,6 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	protected int port;
 	protected Machine myInfo;
 	protected STRATEGY strategy;
-	// TODO think if we can change this to list sorted in increasing order
 	protected TreeMap<Integer, Machine> knownClients = new TreeMap<Integer, Machine>();
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 	protected final Lock readL = rwl.readLock();
@@ -71,8 +70,10 @@ public abstract class AbstractServer implements TcpServerDelegate {
 			throw ioe;
 		}
 	}
-	
+
 	public abstract void startSpecific() throws Exception;
+
+	public abstract void showInfo();
 
 	protected Machine addMachine(Machine machine) {
 		writeL.lock();
@@ -131,7 +132,7 @@ public abstract class AbstractServer implements TcpServerDelegate {
 	}
 
 	public void stop() {
+		// TODO: Stop doesn't work. FIX IT
 		this.tcpServer.stop();
 	}
-
 }

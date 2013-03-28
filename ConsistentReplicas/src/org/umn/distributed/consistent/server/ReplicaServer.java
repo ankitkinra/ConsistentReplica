@@ -80,6 +80,7 @@ public abstract class ReplicaServer extends AbstractServer {
 			preRegister();
 			register();
 			postRegister();
+			showInfo();
 		} catch (Exception e) {
 			logger.error("Failed to register " + myInfo + " to "
 					+ coordinatorMachine, e);
@@ -87,11 +88,18 @@ public abstract class ReplicaServer extends AbstractServer {
 			// stop();
 			throw e;
 		}
-		logger.info("******************************** Replica started ************************************");
+	}
+	
+	@Override
+	public void showInfo() {
+		logger.info("********************************* Replica info **************************************");
 		logger.info("Server IP: " + this.myInfo.getIP() + ", Server Port: " + this.myInfo.getExternalPort());
 		logger.info("*************************************************************************************");
+		if(this.coordinator) {
+			this.coordinatorServer.showInfo();
+		}
 	}
-
+	
 	protected void preRegister() throws Exception {
 		logger.debug("Pre registering");
 		if (this.coordinator) {

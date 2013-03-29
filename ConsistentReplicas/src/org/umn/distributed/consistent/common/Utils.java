@@ -7,7 +7,9 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
@@ -15,6 +17,9 @@ public class Utils {
 	private static Logger logger = Logger.getLogger(Utils.class);
 
 	private static String myIP = null;
+	private static final int FORMAT_INDENT = 2;
+	private static final String POST_START = BulletinBoard.FORMAT_START
+			+ Article.FORMAT_START;
 
 	public static boolean isEmpty(String str) {
 		return str == null || str.trim().length() == 0;
@@ -127,7 +132,7 @@ public class Utils {
 
 	public static byte[] stringToByte(String str) {
 		String encoding = Props.ENCODING;
-		if(Props.ENCODING == null){
+		if (Props.ENCODING == null) {
 			encoding = ClientProps.ENCODING;
 		}
 		return stringToByte(str, encoding);
@@ -148,9 +153,47 @@ public class Utils {
 
 	public static String byteToString(byte[] data) {
 		String encoding = Props.ENCODING;
-		if(Props.ENCODING == null){
+		if (Props.ENCODING == null) {
 			encoding = ClientProps.ENCODING;
 		}
 		return byteToString(data, encoding);
+	}
+
+	public static List<String> getIndentedArticleList(String str) {
+		List<String> articleList = new ArrayList<String>();
+		int indent = (-1) * FORMAT_INDENT;
+		while (str.length() > 0) {
+			if (str.startsWith(POST_START)) {
+				indent += FORMAT_INDENT;
+				int index = str.indexOf(Article.FORMAT_END);
+				if (index < -1) {
+					System.out.println("Article list format error");
+					break;
+				}
+				articleList.add(getArticleIndented(str.substring(1, index + 1),
+						indent));
+				str = str.substring(index + 1);
+			} else if (str.startsWith(BulletinBoard.FORMAT_ENDS)) {
+				indent -= FORMAT_INDENT;
+				if (indent < 0) {
+					System.out.println("Article list format error");
+					break;
+				}
+				str = str.substring(1);
+			} else {
+				System.out.println("Article list format error");
+				break;
+			}
+		}
+		return articleList;
+	}
+
+	private static String getArticleIndented(String str, int indent) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = FORMAT_INDENT; i < indent; i++) {
+			builder.append(" ");
+		}
+		builder.append(str);
+		return builder.toString();
 	}
 }

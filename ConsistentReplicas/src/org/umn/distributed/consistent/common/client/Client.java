@@ -5,10 +5,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
-import org.apache.log4j.Logger;
 import org.umn.distributed.consistent.common.Article;
-import org.umn.distributed.consistent.common.BulletinBoard;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
@@ -18,37 +17,35 @@ import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUEST;
 
 public class Client {
-	private Logger logger = Logger.getLogger(this.getClass());
-
+	public static final String PROPERTIES_FILE = "client.properties";
+	public static final String COMMAND_READ_LIST = "readlist";
+	public static final String COMMAND_READ = "read";
+	public static final String COMMAND_POST = "post";
+	public static final String COMMAND_REPLY = "postreply";
+	public static final String COMMAND_NEXT = "n";
+	public static final String COMMAND_PREVIOUS = "p";
+	public static final String COMMAND_QUIT = "q";
+	public static final String COMMAND_STOP = "stop";
 	private Machine coordinator;
 	private HashMap<Integer, Machine> replicaServerMap = new HashMap<Integer, Machine>();
-	private static final String POST_START = BulletinBoard.FORMAT_START
-			+ Article.FORMAT_START;
-	private static int format_indent = 2;
+	private List<String> articleList;
+	private static int perPage = 10;
+	private BufferedReader reader;
 
 	private Client(String coordinatorIp, int coordinatorPort) {
 		this.coordinator = new Machine(coordinatorIp, coordinatorPort);
+		this.reader = new BufferedReader(new InputStreamReader(System.in));
 	}
 
-	private void postRandom(boolean refreshServers) {
-		if (refreshServers) {
-			try {
-				refreshReplicaServers();
-			} catch (Exception e) {
-				logger.error("Error is replica population", e);
-			}
-		}
-
+	private String readLine() throws IOException {
+		return reader.readLine();
 	}
 
 	private void refreshReplicaServers() throws Exception {
-
 		byte resp[] = TCPClient.sendData(coordinator,
 				Utils.stringToByte(AbstractServer.GET_REGISTERED_COMMAND));
-		logger.info("resp=" + resp);
 		String respStr = Utils.byteToString(resp);
 		if (!respStr.startsWith(AbstractServer.COMMAND_SUCCESS)) {
-			logger.error("Error getting the replica server list from coordinator");
 			throw new Exception(
 					"Error getting the replica server list from coordinator");
 		} else {
@@ -56,15 +53,12 @@ public class Client {
 					.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 							.length());
 			if (replicaStr.length() > 0) {
-				HashMap<Integer, Machine> newMachines = new HashMap<Integer, Machine>();
 				List<Machine> toAdd = Machine.parseList(replicaStr);
+				this.replicaServerMap.clear();
 				for (Machine m : toAdd) {
-					newMachines.put(m.getId(), m);
-					logger.debug("Added replica " + m + " to client");
-				}
-				if (newMachines.size() > 0) {
-					this.replicaServerMap.clear();
-					this.replicaServerMap.putAll(newMachines);
+					m.setPort(m.getExternalPort());
+					m.setExternalPort(0);
+					this.replicaServerMap.put(m.getId(), m);
 				}
 			}
 		}
@@ -87,42 +81,42 @@ public class Client {
 				System.out.println("Error writing article to " + machine);
 			}
 		} catch (IOException e) {
-			logger.error("Error adding article", e);
+			e.printStackTrace();
 		}
 	}
 
-	private void printArticleIndented(String str, int indent) {
-		for (int i = format_indent; i < indent; i++) {
-			System.out.print(" ");
-		}
-		System.out.println(str);
-	}
+	private void printIndentated(String str) {
+		boolean stopped = false;
+		articleList = Utils.getIndentedArticleList(str);
+		int start = 0;
+		while (!stopped) {
+			int curr = 0;
+			while (curr < perPage && (curr + start) < articleList.size()) {
+				System.out.println(articleList.get(start + curr));
+				curr++;
+			}
+			if ((start + perPage) < articleList.size()) {
+				System.out.print("Next (n), ");
+			}
+			if (start == 0) {
+				System.out.println("Previous (p), ");
 
-	private String printIndentated(String str) {
-		int indent = 0;
-		while (str.length() > 0) {
-			if (str.startsWith(POST_START)) {
-				indent += format_indent;
-				int index = str.indexOf(Article.FORMAT_END);
-				if (index < -1) {
-					System.out.println("Article list format error");
-					break;
+			}
+			System.out.println("Quit (q):");
+			try {
+				String command = readLine();
+				if (command.equals("n")) {
+					start += perPage;
+				} else if (command.equals("p")) {
+					start -= perPage;
+				} else if (command.equals("q")) {
+					stopped = true;
 				}
-				printArticleIndented(str.substring(1, index + 1), indent);
-				str = str.substring(index + 1);
-			} else if (str.startsWith(BulletinBoard.FORMAT_ENDS)) {
-				indent -= format_indent;
-				if (indent < 0) {
-					System.out.println("Article list format error");
-					break;
-				}
-				str = str.substring(1);
-			} else {
-				System.out.println("Article list format error");
-				break;
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				stopped = true;
 			}
 		}
-		return str;
 	}
 
 	private void readArticleList(Machine machine) {
@@ -147,11 +141,11 @@ public class Client {
 						.println("Error reading article list from " + machine);
 			}
 		} catch (IOException e) {
-			logger.error("Error adding article", e);
+			e.printStackTrace();
 		}
 	}
 
-	private void readArticle(Machine machine, String id) {
+	private void readArticle(Machine machine, int id) {
 		try {
 			String command = CLIENT_REQUEST.READ_ITEM.name()
 					+ ReplicaServer.COMMAND_PARAM_SEPARATOR + id;
@@ -170,49 +164,166 @@ public class Client {
 				System.out.println("Error reading article from " + machine);
 			}
 		} catch (IOException e) {
-			logger.error("Error adding article", e);
+			e.printStackTrace();
 		}
 
 	}
 
-	/**
-	 * @param args
-	 */
+	public Machine parseAndGetMachine(String idStr) {
+		int id = 0;
+		try {
+			if (Utils.isEmpty(idStr)) {
+				id = Integer.parseInt(idStr);
+			}
+		} catch (NumberFormatException nfe) {
+			System.out.println("Invalid machine id format");
+			return null;
+		}
+		Integer key = id;
+		if (id == 0) {
+			id = (int) Math.random() * (this.replicaServerMap.size() - 1);
+			Set<Integer> keys = this.replicaServerMap.keySet();
+			for (Integer k : keys) {
+				key = k;
+				if (id == 0) {
+					break;
+				}
+				id--;
+			}
+		}
+		return this.replicaServerMap.get(key);
+	}
+
+	public static void showStartUsage() {
+		System.out.println("Usage:");
+		System.out
+				.println("Start replica: ./startclient.sh <coordinatorIp> <coordinatorPort> [<config file path>]");
+	}
+
+	public static void showUsage() {
+		System.out.println("Usage:");
+		System.out.println("Post:" + COMMAND_POST
+				+ " |<post title>|<post content>| [<replica id>]");
+		System.out.println("Read Item List:" + COMMAND_READ_LIST
+				+ " [<replica id>]");
+		System.out.println("Read Details:" + COMMAND_READ
+				+ " <post id> [<replica id>]");
+		System.out
+				.println("Reply:"
+						+ COMMAND_REPLY
+						+ " <post id to reply> |<reply title>|<reply content>| [<replica id>]");
+		System.out.println("Stop Client:" + COMMAND_STOP);
+		System.out.println(COMMAND_POST + " |New news title|New news Content");
+	}
+
 	public static void main(String[] args) {
-		Props.loadProperties(args[2]);
-		Client client = new Client(args[0], Integer.parseInt(args[1]));
+		int port = 0;
+		if (args.length == 2 || args.length == 3) {
+			try {
+				port = Integer.parseInt(args[1]);
+				if (!Utils.isValidPort(port)) {
+					System.out.println("Invalid port");
+					showStartUsage();
+					return;
+				}
+				if (args.length == 2) {
+					Props.loadProperties(PROPERTIES_FILE);
+				} else {
+					Props.loadProperties(args[2]);
+				}
+			} catch (NumberFormatException nfe) {
+				System.out.println("Invalid port");
+				showStartUsage();
+				return;
+			}
+		} else {
+			showStartUsage();
+			return;
+		}
+		Client client = new Client(args[0], port);
 		try {
 			client.refreshReplicaServers();
-			BufferedReader br = new BufferedReader(new InputStreamReader(
-					System.in));
-			while (true) {
-				System.out
-						.println("Command (r, rl <5 to move ahead>, w <article>):");
-				String command = br.readLine();
-				System.out.println("ID:");
-				int id = Integer.parseInt(br.readLine());
-				Machine machine = client.replicaServerMap.get(id);
-				if (command.startsWith("rl")) {
-					client.readArticleList(machine);
-				} else if (command.startsWith("r")) {
-					client.readArticle(machine, command.substring(2));
-				} else if (command.startsWith("w")) {
-					String articleStr = command.substring(2);
-					Article article = Article.parseArticle(articleStr);
-					client.postArticle(article, machine);
-					// String articleParams[] = articleStr.split("\\|");
-					// if (articleParams.length != 3) {
-					// System.out.println("Illegal articl format");
-					// } else {
-					// int parentId = 0;
-					// try {
-					// parentId = Integer.parseInt(articleParams[0]);
-					// } catch (NumberFormatException nfe) {
-					// System.out.println("Invalid parentId");
-					// }
-					// client.postArticle(new Article(0, parentId,
-					// articleParams[1], articleParams[2]), machine);
-					// }
+			boolean stopped = true;
+			while (!stopped) {
+				showUsage();
+				String command = client.readLine();
+				if (command.startsWith(COMMAND_READ_LIST)) {
+					String idStr = command
+							.substring(COMMAND_READ_LIST.length()).trim();
+					Machine machine = client.parseAndGetMachine(idStr);
+					if (machine == null) {
+						System.out
+								.println("Machine not found in list. Will update the replica list now");
+						client.refreshReplicaServers();
+					} else {
+						client.readArticleList(machine);
+					}
+				} else if (command.startsWith(COMMAND_READ)) {
+					command = command.substring(COMMAND_READ.length()).trim();
+					int index = command.indexOf(" ");
+					try {
+						int id = Integer.parseInt(command.substring(0, index));
+						String idStr = command.substring(index).trim();
+						Machine machine = client.parseAndGetMachine(idStr);
+						if (machine == null) {
+							System.out
+									.println("Machine not found in list. Will update the replica list now");
+							client.refreshReplicaServers();
+						} else {
+							client.readArticle(machine, id);
+						}
+					} catch (NumberFormatException nfe) {
+						System.out.println("Invalid article id format");
+					}
+				} else if (command.startsWith(COMMAND_POST)) {
+					command = command.substring(COMMAND_POST.length()).trim();
+					int lastIndex = command.lastIndexOf("|");
+					String idStr = command.substring(lastIndex + 1).trim();
+					command = command.substring(0, lastIndex);
+					String articleParams[] = command.split("\\|");
+					if (articleParams.length != 2) {
+						System.out.println("Invalid post format");
+					} else {
+						Machine machine = client.parseAndGetMachine(idStr);
+						if (machine == null) {
+							System.out
+									.println("Machine not found in list. Will update the replica list now");
+							client.refreshReplicaServers();
+						} else {
+							client.postArticle(new Article(0, 0,
+									articleParams[0], articleParams[1]),
+									machine);
+						}
+					}
+				} else if (command.startsWith(COMMAND_REPLY)) {
+					command = command.substring(COMMAND_REPLY.length()).trim();
+					int firstIndex = command.indexOf("|");
+					try {
+						int id = Integer.parseInt(command.substring(0,
+								firstIndex).trim());
+						int lastIndex = command.lastIndexOf("|");
+						String idStr = command.substring(lastIndex + 1).trim();
+						command = command.substring(firstIndex, lastIndex);
+						String articleParams[] = command.split("\\|");
+						if (articleParams.length != 2) {
+							System.out.println("Invalid post format");
+						} else {
+							Machine machine = client.parseAndGetMachine(idStr);
+							if (machine == null) {
+								System.out
+										.println("Machine not found in list. Will update the replica list now");
+								client.refreshReplicaServers();
+							} else {
+								client.postArticle(new Article(0, id,
+										articleParams[0], articleParams[1]),
+										machine);
+							}
+						}
+					} catch (NumberFormatException nfe) {
+						System.out.println("Invalid article id format");
+					}
+				} else if (command.startsWith(COMMAND_STOP)) {
+					stopped = true;
 				}
 			}
 		} catch (Exception e) {

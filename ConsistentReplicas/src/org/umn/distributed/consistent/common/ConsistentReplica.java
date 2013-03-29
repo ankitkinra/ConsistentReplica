@@ -49,7 +49,7 @@ public class ConsistentReplica {
 					} else if (args.length == 3) {
 						Props.loadProperties(args[2]);
 					}
-					replicaServer = new SequentialServer(false, args[1], port);
+					replicaServer = new SequentialServer(false, args[0], port);
 				} catch (NumberFormatException nfe) {
 					System.out.println("Invalid port");
 					showUsage();

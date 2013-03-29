@@ -15,7 +15,7 @@ public class LoggingUtils {
 	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	private static Logger logger;
 	static {
-		final String LOG_FILE = "log4j.properties";
+		final String LOG_FILE = Props.logFilePath;
 		Properties logProp = new Properties();
 
 		try {
@@ -84,13 +84,12 @@ public class LoggingUtils {
 		}
 
 	}
-	
 
 	public static void logError(Logger log, Exception e, String format,
 			Object... args) {
 		log.error(String.format(format, args), e);
 	}
-	
+
 	public static void logError(Logger log, Exception e, String message) {
 		log.error(message, e);
 	}

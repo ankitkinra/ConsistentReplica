@@ -172,7 +172,7 @@ public class Client {
 	public Machine parseAndGetMachine(String idStr) {
 		int id = 0;
 		try {
-			if (Utils.isEmpty(idStr)) {
+			if (!Utils.isEmpty(idStr)) {
 				id = Integer.parseInt(idStr);
 			}
 		} catch (NumberFormatException nfe) {
@@ -201,19 +201,20 @@ public class Client {
 	}
 
 	public static void showUsage() {
-		System.out.println("Usage:");
-		System.out.println("Post:" + COMMAND_POST
+		System.out.println("\n\nUsage:");
+		System.out.println("Post: " + COMMAND_POST
 				+ " |<post title>|<post content>| [<replica id>]");
-		System.out.println("Read Item List:" + COMMAND_READ_LIST
+		System.out.println("Read List: " + COMMAND_READ_LIST
 				+ " [<replica id>]");
-		System.out.println("Read Details:" + COMMAND_READ
+		System.out.println("Read Details: " + COMMAND_READ
 				+ " <post id> [<replica id>]");
 		System.out
-				.println("Reply:"
+				.println("Reply: "
 						+ COMMAND_REPLY
 						+ " <post id to reply> |<reply title>|<reply content>| [<replica id>]");
 		System.out.println("Stop Client:" + COMMAND_STOP);
-		System.out.println(COMMAND_POST + " |New news title|New news Content");
+		System.out.println("eg.: " + COMMAND_POST
+				+ " |New news title|New news Content|");
 	}
 
 	public static void main(String[] args) {
@@ -277,37 +278,39 @@ public class Client {
 					}
 				} else if (command.startsWith(COMMAND_POST)) {
 					command = command.substring(COMMAND_POST.length()).trim();
-					int lastIndex = command.lastIndexOf("|");
-					String idStr = command.substring(lastIndex + 1).trim();
-					command = command.substring(0, lastIndex);
-					String articleParams[] = command.split("\\|");
-					if (articleParams.length != 2) {
-						System.out.println("Invalid post format");
-					} else {
+					if (command.startsWith("\"")) {
+						int index = command.indexOf("\"", 1);
+						String articleTitle = command.substring(1, index);
+						command = command.substring(index + 1).trim();
+						index = command.indexOf("\"", 1);
+						String articleContent = command.substring(1, index);
+						String idStr = command.substring(index + 1).trim();
 						Machine machine = client.parseAndGetMachine(idStr);
 						if (machine == null) {
 							System.out
 									.println("Machine not found in list. Will update the replica list now");
 							client.refreshReplicaServers();
 						} else {
-							client.postArticle(new Article(0, 0,
-									articleParams[0], articleParams[1]),
-									machine);
+							client.postArticle(new Article(0, 0, articleTitle,
+									articleContent), machine);
 						}
+					} else {
+						System.out
+								.println("Unable to parse post title and post content.");
 					}
 				} else if (command.startsWith(COMMAND_REPLY)) {
 					command = command.substring(COMMAND_REPLY.length()).trim();
-					int firstIndex = command.indexOf("|");
+					int index = command.indexOf(" ");
 					try {
-						int id = Integer.parseInt(command.substring(0,
-								firstIndex).trim());
-						int lastIndex = command.lastIndexOf("|");
-						String idStr = command.substring(lastIndex + 1).trim();
-						command = command.substring(firstIndex, lastIndex);
-						String articleParams[] = command.split("\\|");
-						if (articleParams.length != 2) {
-							System.out.println("Invalid post format");
-						} else {
+						int id = Integer.parseInt(command.substring(0, index));
+						command = command.substring(index).trim();
+						if (command.startsWith("\"")) {
+							index = command.indexOf("\"", 1);
+							String articleTitle = command.substring(1, index);
+							command = command.substring(index + 1).trim();
+							index = command.indexOf("\"", 1);
+							String articleContent = command.substring(1, index);
+							String idStr = command.substring(index + 1).trim();
 							Machine machine = client.parseAndGetMachine(idStr);
 							if (machine == null) {
 								System.out
@@ -315,9 +318,11 @@ public class Client {
 								client.refreshReplicaServers();
 							} else {
 								client.postArticle(new Article(0, id,
-										articleParams[0], articleParams[1]),
-										machine);
+										articleTitle, articleContent), machine);
 							}
+						} else {
+							System.out
+									.println("Unable to parse post title and post content.");
 						}
 					} catch (NumberFormatException nfe) {
 						System.out.println("Invalid article id format");

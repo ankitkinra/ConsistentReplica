@@ -191,10 +191,6 @@ public class Utils {
 		return articleList;
 	}
 
-	public static void main(String[] args) {
-		getIndentedArticleList("{[1|0|t|c11]}{[2|0|t|c12]}{[3|0|t|c13]}{[4|0|t|c14]}{[5|0|t|c15]}{[6|0|t|c16]}{[7|0|t|c17]}{[8|0|t|c18]}{[9|0|t|c21]}{[10|0|t|c22]}{[11|0|t|c23]}{[12|0|t|c24]}{[13|0|t|c25]}{[14|0|t|c26]}{[15|0|t|c27]}{[16|0|t|c28]}{[17|0|t|c31]}{[18|0|t|c32]}{[19|0|t|c33]}{[20|0|t|c34]}{[21|0|t|c35]}{[22|0|t|c36]}{[23|0|t|c37]}{[24|0|t|c38]}");
-	}
-
 	private static String getArticleIndented(String str, int indent) {
 		StringBuilder builder = new StringBuilder();
 		for (int i = FORMAT_INDENT; i < indent; i++) {
@@ -212,7 +208,6 @@ public class Utils {
 			builder.append(article.getTitle()).append("    ")
 					.append(article.getContent());
 		}
-		builder.append(str);
 		return builder.toString();
 	}
 }

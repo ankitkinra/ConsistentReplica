@@ -268,10 +268,6 @@ public class BulletinBoard {
 		// } while (index != -1);
 	}
 
-	public static void mergeWithBB(BulletinBoard board, String str) {
-
-	}
-
 	/**
 	 * No locking consistency here, hence make sure only one thread is accessing
 	 * these bb's
@@ -386,7 +382,11 @@ public class BulletinBoard {
 			for (BulletinBoardEntry entry : entries) {
 				Article article = entry.getArticle();
 				if (article != null) {
-					this.addArticle(article);
+					if (article.isRoot()) {
+						this.addArticle(article);
+					} else {
+						this.addArticleReply(article);
+					}
 				}
 			}
 		}

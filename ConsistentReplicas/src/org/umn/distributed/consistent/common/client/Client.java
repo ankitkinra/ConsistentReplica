@@ -97,6 +97,9 @@ public class Client {
 		int pages = (int) Math.ceil(((double) articleList.size()) / perPage);
 		while (!stopped) {
 			int curr = 0;
+			if (articleList.size() == 0) {
+				return;
+			}
 			int currPage = (int) Math.ceil(((double) start) / perPage) + 1;
 			System.out.println("******************Page " + currPage + " of "
 					+ pages + " pages******************");
@@ -106,19 +109,22 @@ public class Client {
 			}
 			System.out
 					.println("****************************************************");
+			boolean showN = false;
+			boolean showP = false;
 			if ((start + perPage) < articleList.size()) {
 				System.out.print("Next page(n), ");
+				showN = true;
 			}
 			if (start > 0) {
 				System.out.print("Previous page(p), ");
-
+				showP = true;
 			}
 			System.out.print("Quit(q):");
 			try {
 				String command = readLine();
-				if (command.equals("n")) {
+				if (showN && command.equals("n")) {
 					start += perPage;
-				} else if (command.equals("p")) {
+				} else if (showP && command.equals("p")) {
 					start -= perPage;
 				} else if (command.equals("q")) {
 					stopped = true;

@@ -17,7 +17,6 @@ import org.umn.distributed.consistent.server.ReplicaServer;
 import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUEST;
 
 public class Client {
-	public static final String PROPERTIES_FILE = "client.properties";
 	public static final String COMMAND_READ_LIST = "readlist";
 	public static final String COMMAND_READ = "read";
 	public static final String COMMAND_POST = "post";
@@ -214,7 +213,7 @@ public class Client {
 	public static void showStartUsage() {
 		System.out.println("Usage:");
 		System.out
-				.println("Start replica: ./startclient.sh <coordinatorIp> <coordinatorPort> [<config file path>]");
+				.println("Start replica: ./startclient.sh <coordinatorIp> <coordinatorPort> <config file path>");
 	}
 
 	public static void showUsage() {
@@ -234,7 +233,7 @@ public class Client {
 
 	public static void main(String[] args) {
 		int port = 0;
-		if (args.length == 2 || args.length == 3) {
+		if (args.length == 3) {
 			try {
 				port = Integer.parseInt(args[1]);
 				if (!Utils.isValidPort(port)) {
@@ -242,11 +241,7 @@ public class Client {
 					showStartUsage();
 					return;
 				}
-				if (args.length == 2) {
-					Props.loadProperties(PROPERTIES_FILE);
-				} else {
-					Props.loadProperties(args[2]);
-				}
+				Props.loadProperties(args[2]);
 			} catch (NumberFormatException nfe) {
 				System.out.println("Invalid port");
 				showStartUsage();

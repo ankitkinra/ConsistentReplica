@@ -29,7 +29,6 @@ import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUES
 import com.thoughtworks.xstream.XStream;
 
 public class TestClient {
-	private static final String PROPERTIES_FILE = "src/client_config.properties";
 	private static final String READ_ITEM_COMMAND_NAME = "readItem";
 	private static final String READ_ITEMS_COMMAND_NAME = "readItems";
 	private static final String POST_OPERATION_NAME = "post";
@@ -57,22 +56,28 @@ public class TestClient {
 	public static void showUsage() {
 		System.out.println("Usage:");
 		System.out
-				.println("Run tests: ./runtests.sh <Test Config File> <Coordinator Ip> <Coordinator Port> [<config file path>]");
+				.println("Run tests: ./runtests.sh <Test Config File> <Coordinator Ip> <Coordinator Port> <config file path>");
 	}
 
 	public static void main(String[] args) {
-		if (args.length == 3 || args.length == 4) {
+		if (args.length == 4) {
 			String xmlTestFile = args[0];
 			String coopIP = args[1];
-			int coopPort = Integer.parseInt(args[2]);
-			if (args.length == 4) {
+			try {
+				int coopPort = Integer.parseInt(args[2]);
+				if (!Utils.isValidPort(coopPort)) {
+					System.out.println("Invalid port");
+					showUsage();
+					return;
+				}
 				ClientProps.loadProperties(args[3]);
-			} else {
-				ClientProps.loadProperties(PROPERTIES_FILE);
+				TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
+				System.out.println(tc.testSuite);
+				tc.startTest();
+			} catch (NumberFormatException nfe) {
+				System.out.println("Invalid port");
+				showUsage();
 			}
-			TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
-			System.out.println(tc.testSuite);
-			tc.startTest();
 		} else {
 			showUsage();
 		}

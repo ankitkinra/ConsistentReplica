@@ -9,7 +9,6 @@ import org.umn.distributed.consistent.server.sequential.SequentialServer;
 
 public class ConsistentReplica {
 
-	public static final String PROPERTIES_FILE = "src/server.properties";
 	public static final String COORDINATOR_PARAM = "coordinator";
 	public static final String COMMAND_SHOWINFO = "showinfo";
 	public static final String COMMAND_STOP = "stop";
@@ -17,26 +16,19 @@ public class ConsistentReplica {
 	private static void showUsage() {
 		System.out.println("Usage:");
 		System.out.println("Start coordinator: ./startreplica.sh "
-				+ COORDINATOR_PARAM + " [<config file path>]");
+				+ COORDINATOR_PARAM + " <config file path>");
 		System.out
-				.println("Start replica: ./startreplica.sh <coordinatorIp> <coordinatorPort> [<config file path>]");
+				.println("Start replica: ./startreplica.sh <Coordinator Ip> <Coordinator Port> <config file path>");
 	}
 
 	public static void main(String[] args) {
 		// TODO: add actual command line parameters
 		ReplicaServer replicaServer = null;
-		if (args.length >= 1 && args.length <= 3) {
-			if (args[0].equals(COORDINATOR_PARAM)) {
-				if (args.length == 1) {
-					Props.loadProperties(PROPERTIES_FILE);
-				} else if (args.length == 2) {
-					Props.loadProperties(args[1]);
-				} else {
-					showUsage();
-					return;
-				}
+		if (args.length == 2 || args.length == 3) {
+			if (args[0].equals(COORDINATOR_PARAM) && args.length == 2) {
+				Props.loadProperties(args[1]);
 				replicaServer = new SequentialServer(true, null, 0);
-			} else if (args.length == 2 || args.length == 3) {
+			} else if (args.length == 3) {
 				try {
 					int port = Integer.parseInt(args[1]);
 					if (!Utils.isValidPort(port)) {
@@ -44,11 +36,7 @@ public class ConsistentReplica {
 						showUsage();
 						return;
 					}
-					if (args.length == 2) {
-						Props.loadProperties(PROPERTIES_FILE);
-					} else if (args.length == 3) {
-						Props.loadProperties(args[2]);
-					}
+					Props.loadProperties(args[2]);
 					replicaServer = new SequentialServer(false, args[0], port);
 				} catch (NumberFormatException nfe) {
 					System.out.println("Invalid port");

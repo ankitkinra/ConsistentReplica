@@ -161,13 +161,14 @@ public class Utils {
 
 	public static List<String> getIndentedArticleList(String str) {
 		List<String> articleList = new ArrayList<String>();
-		int indent = (-1) * FORMAT_INDENT;
+		int indent = 0;
 		while (str.length() > 0) {
 			if (str.startsWith(POST_START)) {
 				indent += FORMAT_INDENT;
 				int index = str.indexOf(Article.FORMAT_END);
 				if (index < -1) {
-					System.out.println("Article list format error");
+					System.out
+							.println("Article format error. Termination string missing.");
 					break;
 				}
 				articleList.add(getArticleIndented(str.substring(1, index + 1),
@@ -176,16 +177,22 @@ public class Utils {
 			} else if (str.startsWith(BulletinBoard.FORMAT_ENDS)) {
 				indent -= FORMAT_INDENT;
 				if (indent < 0) {
-					System.out.println("Article list format error");
+					System.out
+							.println("Article format error. Extra termination string.");
 					break;
 				}
 				str = str.substring(1);
 			} else {
-				System.out.println("Article list format error");
+				System.out
+						.println("Article list format error. Extra characters.");
 				break;
 			}
 		}
 		return articleList;
+	}
+
+	public static void main(String[] args) {
+		getIndentedArticleList("{[1|0|t|c11]}{[2|0|t|c12]}{[3|0|t|c13]}{[4|0|t|c14]}{[5|0|t|c15]}{[6|0|t|c16]}{[7|0|t|c17]}{[8|0|t|c18]}{[9|0|t|c21]}{[10|0|t|c22]}{[11|0|t|c23]}{[12|0|t|c24]}{[13|0|t|c25]}{[14|0|t|c26]}{[15|0|t|c27]}{[16|0|t|c28]}{[17|0|t|c31]}{[18|0|t|c32]}{[19|0|t|c33]}{[20|0|t|c34]}{[21|0|t|c35]}{[22|0|t|c36]}{[23|0|t|c37]}{[24|0|t|c38]}");
 	}
 
 	private static String getArticleIndented(String str, int indent) {
@@ -193,14 +200,17 @@ public class Utils {
 		for (int i = FORMAT_INDENT; i < indent; i++) {
 			builder.append(" ");
 		}
-		if(str.startsWith(BulletinBoard.NULL_ARTICLE_START)) {
-			builder.append(str.substring(BulletinBoard.NULL_ARTICLE_START.length() + 1, str.length() - 1)).append(".");
+		if (str.startsWith(BulletinBoard.NULL_ARTICLE_START)) {
+			builder.append(
+					str.substring(
+							BulletinBoard.NULL_ARTICLE_START.length() + 1,
+							str.length() - 1)).append(".");
 			builder.append("Article details no available at this replica");
-		}
-		else {
+		} else {
 			Article article = Article.parseArticle(str);
 			builder.append(article.getId()).append(". ");
-			builder.append(article.getTitle()).append("    ").append(article.getContent());
+			builder.append(article.getTitle()).append("    ")
+					.append(article.getContent());
 		}
 		builder.append(str);
 		return builder.toString();

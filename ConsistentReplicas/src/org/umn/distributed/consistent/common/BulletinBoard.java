@@ -492,7 +492,7 @@ public class BulletinBoard {
 
 	/**
 	 * expects articleString as article1;article2;..
-	 * 
+	 * unused
 	 * @param articleListInString
 	 * @return
 	 */

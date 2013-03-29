@@ -17,6 +17,7 @@ import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 import org.umn.distributed.consistent.common.Article;
+import org.umn.distributed.consistent.common.ClientProps;
 import org.umn.distributed.consistent.common.LoggingUtils;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.TCPClient;
@@ -56,6 +57,7 @@ public class TestClient {
 		String xmlTestFile = args[0];
 		String coopIP = args[1];
 		int coopPort = Integer.parseInt(args[2]);
+		ClientProps.loadProperties(args[3]);
 		TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
 		System.out.println(tc.rounds);
 		tc.startTest();
@@ -63,10 +65,10 @@ public class TestClient {
 
 	private List<Machine> getReplicaServers() throws Exception {
 		List<Machine> avlblReplicaList = null;
-		byte[] resp = TCPClient.sendData(this.myCoord,
-				Utils.stringToByte(AbstractServer.GET_REGISTERED_COMMAND));
+		byte[] resp = TCPClient.sendData(this.myCoord, Utils.stringToByte(
+				AbstractServer.GET_REGISTERED_COMMAND, ClientProps.ENCODING));
 
-		String respStr = Utils.byteToString(resp);
+		String respStr = Utils.byteToString(resp, ClientProps.ENCODING);
 		if (!respStr.startsWith(AbstractServer.COMMAND_SUCCESS)) {
 			logger.error("Error getting the replica server list from coordinator");
 			throw new Exception(
@@ -142,6 +144,12 @@ public class TestClient {
 				}
 			}
 		}
+
+		LoggingUtils
+				.logInfo(
+						logger,
+						"Testing rounds are over, here is the summary \n %s, \n Here is the list of articles publised = %s",
+						this.roundSummaries, this.articlesPublishedRecord);
 
 	}
 
@@ -234,6 +242,11 @@ public class TestClient {
 
 	private void postArticles(RoundSummary rs, int rootArticlesToPost,
 			int repliesToPost) throws Exception {
+		LoggingUtils
+				.logInfo(
+						logger,
+						"In posting articles rootArticlesToPost = %s , repliesToPost = %s",
+						rootArticlesToPost, repliesToPost);
 		// first posting roots
 		if (rootArticlesToPost > 0) {
 			List<Machine> avlblMachines = getReplicaServers();
@@ -337,16 +350,15 @@ public class TestClient {
 			String command = CLIENT_REQUEST.POST.name()
 					+ AbstractServer.COMMAND_PARAM_SEPARATOR + article;
 			byte resp[] = TCPClient.sendData(machine,
-					Utils.stringToByte(command));
+					Utils.stringToByte(command, ClientProps.ENCODING));
 			String response = Utils.byteToString(resp);
 			if (response.startsWith(AbstractServer.COMMAND_SUCCESS)) {
-				int articleIdAssigned = Integer
-						.parseInt(response
+				Article postedArticle = Article
+						.parseArticle(response
 								.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 										.length()));
-				System.out.println("Article written with id "
-						+ articleIdAssigned);
-				article.setId(articleIdAssigned);
+				System.out.println("Article written =" + postedArticle);
+				article.setId(postedArticle.getId());
 			} else {
 				System.out.println("Error writing article to " + machine);
 			}
@@ -387,7 +399,7 @@ public class TestClient {
 			String command = CLIENT_REQUEST.READ_ITEM.name()
 					+ ReplicaServer.COMMAND_PARAM_SEPARATOR + id;
 			byte resp[] = TCPClient.sendData(machine,
-					Utils.stringToByte(command));
+					Utils.stringToByte(command, ClientProps.ENCODING));
 			String response = Utils.byteToString(resp);
 			if (response.startsWith(AbstractServer.COMMAND_SUCCESS)) {
 				response = response
@@ -407,13 +419,14 @@ public class TestClient {
 	public static List<Article> parseArticleList(String req) {
 		List<Article> articles = new LinkedList<Article>();
 		int index = -1;
-		int start = 0;
+		int start = 1;
 		while ((index = req.indexOf("]", start)) > -1) {
 			Article a = Article.parseArticle(req.substring(start, index + 1));
 			articles.add(a);
-			start = index + 1;
+			start = index + 3;
 
 		}
+
 		return articles;
 	}
 

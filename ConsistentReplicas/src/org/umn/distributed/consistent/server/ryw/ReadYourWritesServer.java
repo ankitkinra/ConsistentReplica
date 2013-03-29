@@ -523,8 +523,8 @@ public class ReadYourWritesServer extends ReplicaServer {
 			 * the latest article written across the read quorum
 			 */
 			syncBB();
-			return parseBytesFromArticleListWithCommandPrefix(COMMAND_SUCCESS,
-					this.bb.getAllArticles());
+			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
+					+ this.bb.toShortString());
 		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
 			/**
 			 * FORMAT: READ_ITEM-<int>

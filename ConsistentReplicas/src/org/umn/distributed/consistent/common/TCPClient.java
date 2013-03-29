@@ -19,7 +19,11 @@ public class TCPClient {
 					+ remoteMachine);
 		}
 		// Adding a random delay
-		long delay = randomDelay.nextInt(Props.maxPseudoNetworkDelay);
+		int maxDelay = Props.maxPseudoNetworkDelay;
+		if(maxDelay < 1){
+			maxDelay = ClientProps.maxPseudoNetworkDelay;
+		}
+		long delay = randomDelay.nextInt(maxDelay);
 		try {
 			Thread.sleep(delay);
 		} catch (InterruptedException e) {

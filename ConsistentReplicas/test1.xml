@@ -9,6 +9,10 @@
 					<string>root</string>
 					<string>2</string>
 				</entry>
+				<entry>
+					<string>child</string>
+					<string>2</string>
+				</entry>
 			</params>
 		</operation>
 		<operation>

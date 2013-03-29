@@ -578,8 +578,9 @@ public class QuorumServer extends ReplicaServer {
 			 * the latest article written across the read quorum
 			 */
 			mergeLatestArticleFromQuorum();
-			return parseBytesFromArticleListWithCommandPrefix(COMMAND_SUCCESS,
-					this.bb.getAllArticles());
+			// need to change this to make it consistent with sequential server
+			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
+					+ this.bb.toShortString());
 		} else if (request.startsWith(CLIENT_REQUEST.READ_ITEM.name())) {
 			/**
 			 * FORMAT: READ_ITEM-<int>

@@ -108,7 +108,7 @@ public class Machine {
 			throws IllegalArgumentException {
 		if (!machineStr.startsWith(FORMAT_START)
 				|| !machineStr.endsWith(FORMAT_END)) {
-			throw new IllegalArgumentException("Invalid machine format");
+			throw new IllegalArgumentException("Invalid machine format="+machineStr);
 		}
 		machineStr = machineStr.substring(1, machineStr.length() - 1);
 		String machineParams[] = machineStr.split("\\|");

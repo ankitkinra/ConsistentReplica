@@ -126,7 +126,11 @@ public class Utils {
 	}
 
 	public static byte[] stringToByte(String str) {
-		return stringToByte(str, Props.ENCODING);
+		String encoding = Props.ENCODING;
+		if(Props.ENCODING == null){
+			encoding = ClientProps.ENCODING;
+		}
+		return stringToByte(str, encoding);
 	}
 
 	public static String byteToString(byte[] data, String encoding) {
@@ -143,6 +147,10 @@ public class Utils {
 	}
 
 	public static String byteToString(byte[] data) {
-		return byteToString(data, Props.ENCODING);
+		String encoding = Props.ENCODING;
+		if(Props.ENCODING == null){
+			encoding = ClientProps.ENCODING;
+		}
+		return byteToString(data, encoding);
 	}
 }

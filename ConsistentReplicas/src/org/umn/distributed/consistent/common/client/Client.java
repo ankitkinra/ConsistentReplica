@@ -75,11 +75,12 @@ public class Client {
 					Utils.stringToByte(command));
 			String response = Utils.byteToString(resp);
 			if (response.startsWith(AbstractServer.COMMAND_SUCCESS)) {
-				System.out
-						.println("Article written with id "
-								+ response
-										.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
-												.length()));
+				response = response
+						.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
+								.length());
+				Article articleResp = Article.parseArticle(response);
+				System.out.println("Article written with id "
+						+ articleResp.getId());
 			} else {
 				System.out.println("Error posting article to machine:"
 						+ machine);

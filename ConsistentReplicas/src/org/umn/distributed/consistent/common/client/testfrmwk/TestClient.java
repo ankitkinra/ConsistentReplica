@@ -29,6 +29,7 @@ import org.umn.distributed.consistent.server.quorum.CommandCentral.CLIENT_REQUES
 import com.thoughtworks.xstream.XStream;
 
 public class TestClient {
+	private static final String PROPERTIES_FILE = "src/client_config.properties";
 	private static final String READ_ITEM_COMMAND_NAME = "readItem";
 	private static final String READ_ITEMS_COMMAND_NAME = "readItems";
 	private static final String POST_OPERATION_NAME = "post";
@@ -57,7 +58,11 @@ public class TestClient {
 		String xmlTestFile = args[0];
 		String coopIP = args[1];
 		int coopPort = Integer.parseInt(args[2]);
-		ClientProps.loadProperties(args[3]);
+		if (args.length == 4) {
+			ClientProps.loadProperties(args[3]);
+		} else {
+			ClientProps.loadProperties(PROPERTIES_FILE);
+		}
 		TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
 		System.out.println(tc.testSuite);
 		tc.startTest();
@@ -190,7 +195,7 @@ public class TestClient {
 				String[] dotSeperator = a.split("\\.");
 				returnedArticleIdSet.add(Integer.parseInt(dotSeperator[0]));
 			}
-			Set<Integer> publishedArtSet = articlesPublishedRecord.keySet();
+			Set<Integer> publishedArtSet = new HashSet<Integer>(articlesPublishedRecord.keySet());
 			publishedArtSet.removeAll(returnedArticleIdSet);
 			if (publishedArtSet.size() > 0) {
 				// missing articles
@@ -209,7 +214,10 @@ public class TestClient {
 		if (relativeArticleId > articlesPublishedRecord.size()
 				|| relativeArticleId < 0) {
 			throw new IllegalArgumentException(
-					"relativeArticleId cannot be more than the number of articles published");
+					"relativeArticleId cannot be more than the number of articles published; relativeArticleId="
+							+ relativeArticleId
+							+ " articlesPublishedRecord.size()="
+							+ articlesPublishedRecord.size());
 		}
 		Article articleToRead = null;
 		int counter = 0;

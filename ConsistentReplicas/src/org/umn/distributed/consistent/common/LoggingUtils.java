@@ -15,7 +15,12 @@ public class LoggingUtils {
 	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	private static Logger logger;
 	static {
-		final String LOG_FILE = Props.logFilePath;
+		String LOG_FILE = Props.logFilePath;
+		if (Props.logFilePath == null) {
+			LOG_FILE = ClientProps.logFilePath;
+		} else {
+			LOG_FILE = Props.logFilePath;
+		}
 		Properties logProp = new Properties();
 
 		try {

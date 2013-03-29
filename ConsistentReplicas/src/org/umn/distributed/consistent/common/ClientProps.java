@@ -13,6 +13,7 @@ public class ClientProps {
 
 	public static int QUORUM_SYNC_TIME_MILLIS = 5000;
 	public static int maxPseudoNetworkDelay;
+	public static String logFilePath;
 
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
@@ -26,6 +27,7 @@ public class ClientProps {
 
 			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty(
 					"maxPseudoNetworkDelay", DEFAULT_MAX_PSEUDO_NW_DELAY));
+			logFilePath = prop.getProperty("logFilePath");
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

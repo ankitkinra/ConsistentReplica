@@ -92,7 +92,7 @@ public class SequentialServer extends ReplicaServer {
 		Set<Machine> set = getMachineList();
 		if (writeToReplicas(writeStatus, set, article)) {
 			localWrite(article);
-			return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.getId();
+			return COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR + article.toString();
 		}
 		return COMMAND_FAILED + "-" + "Failed writing the article to replicas";
 	}

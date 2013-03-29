@@ -21,7 +21,7 @@ public class Client {
 	public static final String COMMAND_READ_LIST = "readlist";
 	public static final String COMMAND_READ = "read";
 	public static final String COMMAND_POST = "post";
-	public static final String COMMAND_REPLY = "postreply";
+	public static final String COMMAND_REPLY = "reply";
 	public static final String COMMAND_NEXT = "n";
 	public static final String COMMAND_PREVIOUS = "p";
 	public static final String COMMAND_QUIT = "q";
@@ -55,10 +55,13 @@ public class Client {
 			if (replicaStr.length() > 0) {
 				List<Machine> toAdd = Machine.parseList(replicaStr);
 				this.replicaServerMap.clear();
+				System.out.println("Available replica server details:");
 				for (Machine m : toAdd) {
 					m.setPort(m.getExternalPort());
 					m.setExternalPort(0);
 					this.replicaServerMap.put(m.getId(), m);
+					System.out.println("Id:" + m.getId() + ", IP:" + m.getIP()
+							+ ", Port:" + m.getPort());
 				}
 			}
 		}
@@ -78,7 +81,9 @@ public class Client {
 										.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 												.length()));
 			} else {
-				System.out.println("Error writing article to " + machine);
+				System.out.println("Error posting article to machine:"
+						+ machine);
+				System.out.println("Server response: " + response);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -89,20 +94,26 @@ public class Client {
 		boolean stopped = false;
 		articleList = Utils.getIndentedArticleList(str);
 		int start = 0;
+		int pages = (int) Math.ceil(((double) articleList.size()) / perPage);
 		while (!stopped) {
 			int curr = 0;
+			int currPage = (int) Math.ceil(((double) start) / perPage) + 1;
+			System.out.println("******************Page " + currPage + " of "
+					+ pages + " pages******************");
 			while (curr < perPage && (curr + start) < articleList.size()) {
 				System.out.println(articleList.get(start + curr));
 				curr++;
 			}
+			System.out
+					.println("****************************************************");
 			if ((start + perPage) < articleList.size()) {
-				System.out.print("Next (n), ");
+				System.out.print("Next page(n), ");
 			}
-			if (start == 0) {
-				System.out.println("Previous (p), ");
+			if (start > 0) {
+				System.out.print("Previous page(p), ");
 
 			}
-			System.out.println("Quit (q):");
+			System.out.print("Quit(q):");
 			try {
 				String command = readLine();
 				if (command.equals("n")) {
@@ -111,6 +122,8 @@ public class Client {
 					start -= perPage;
 				} else if (command.equals("q")) {
 					stopped = true;
+				} else {
+					System.out.println("Invalid command");
 				}
 			} catch (IOException ioe) {
 				ioe.printStackTrace();
@@ -129,16 +142,14 @@ public class Client {
 					Utils.stringToByte(command));
 			String response = Utils.byteToString(resp);
 			if (response.startsWith(AbstractServer.COMMAND_SUCCESS)) {
-				System.out.println("********Read articles********");
 				response = response
 						.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 								.length());
 				printIndentated(response);
-				System.out
-						.println("****************************************************");
 			} else {
-				System.out
-						.println("Error reading article list from " + machine);
+				System.out.println("Error reading article list from machine:"
+						+ machine);
+				System.out.println("Server response: " + response);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -153,15 +164,20 @@ public class Client {
 					Utils.stringToByte(command));
 			String response = Utils.byteToString(resp);
 			if (response.startsWith(AbstractServer.COMMAND_SUCCESS)) {
-				System.out.println("********Read article********");
+				response = response
+						.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
+								.length());
+				Article article = Article.parseArticle(response);
 				System.out
-						.println(response
-								.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
-										.length()));
+						.println("********************Read article********************");
+				System.out.println(article.getId() + ". " + article.getTitle());
+				System.out.println(article.getContent());
 				System.out
 						.println("****************************************************");
 			} else {
-				System.out.println("Error reading article from " + machine);
+				System.out.println("Error reading article from machine:"
+						+ machine);
+				System.out.println("Server response: " + response);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -203,18 +219,16 @@ public class Client {
 	public static void showUsage() {
 		System.out.println("\n\nUsage:");
 		System.out.println("Post: " + COMMAND_POST
-				+ " |<post title>|<post content>| [<replica id>]");
+				+ " \"<post title>\" \"<post content>\" [<replica id>]");
+		System.out
+				.println("Reply: "
+						+ COMMAND_REPLY
+						+ " <post id to reply> \"<post title>\" \"<post content>\" [<replica id>]");
 		System.out.println("Read List: " + COMMAND_READ_LIST
 				+ " [<replica id>]");
 		System.out.println("Read Details: " + COMMAND_READ
 				+ " <post id> [<replica id>]");
-		System.out
-				.println("Reply: "
-						+ COMMAND_REPLY
-						+ " <post id to reply> |<reply title>|<reply content>| [<replica id>]");
 		System.out.println("Stop Client:" + COMMAND_STOP);
-		System.out.println("eg.: " + COMMAND_POST
-				+ " |New news title|New news Content|");
 	}
 
 	public static void main(String[] args) {
@@ -254,7 +268,7 @@ public class Client {
 					Machine machine = client.parseAndGetMachine(idStr);
 					if (machine == null) {
 						System.out
-								.println("Machine not found in list. Will update the replica list now");
+								.println("Replica server not found in list. Will update the replica list now");
 						client.refreshReplicaServers();
 					} else {
 						client.readArticleList(machine);
@@ -263,12 +277,18 @@ public class Client {
 					command = command.substring(COMMAND_READ.length()).trim();
 					int index = command.indexOf(" ");
 					try {
-						int id = Integer.parseInt(command.substring(0, index));
-						String idStr = command.substring(index).trim();
+						String artId = command;
+						int id = 0;
+						String idStr = null;
+						if (index > 0) {
+							artId = command.substring(0, index);
+							idStr = command.substring(index).trim();
+						}
+						id = Integer.parseInt(artId);
 						Machine machine = client.parseAndGetMachine(idStr);
 						if (machine == null) {
 							System.out
-									.println("Machine not found in list. Will update the replica list now");
+									.println("Replica server not found in list. Will update the replica list now");
 							client.refreshReplicaServers();
 						} else {
 							client.readArticle(machine, id);
@@ -280,15 +300,23 @@ public class Client {
 					command = command.substring(COMMAND_POST.length()).trim();
 					if (command.startsWith("\"")) {
 						int index = command.indexOf("\"", 1);
+						if (index < 0) {
+							System.out.println("Invalid article title");
+							continue;
+						}
 						String articleTitle = command.substring(1, index);
 						command = command.substring(index + 1).trim();
 						index = command.indexOf("\"", 1);
+						if (index < 0) {
+							System.out.println("Invalid article content");
+							continue;
+						}
 						String articleContent = command.substring(1, index);
 						String idStr = command.substring(index + 1).trim();
 						Machine machine = client.parseAndGetMachine(idStr);
 						if (machine == null) {
 							System.out
-									.println("Machine not found in list. Will update the replica list now");
+									.println("Replia server not found in list. Will update the replica list now");
 							client.refreshReplicaServers();
 						} else {
 							client.postArticle(new Article(0, 0, articleTitle,
@@ -302,19 +330,31 @@ public class Client {
 					command = command.substring(COMMAND_REPLY.length()).trim();
 					int index = command.indexOf(" ");
 					try {
+						if (index < 0) {
+							System.out.println("Invalid article id");
+							continue;
+						}
 						int id = Integer.parseInt(command.substring(0, index));
 						command = command.substring(index).trim();
 						if (command.startsWith("\"")) {
 							index = command.indexOf("\"", 1);
+							if (index < 0) {
+								System.out.println("Invalid article title");
+								continue;
+							}
 							String articleTitle = command.substring(1, index);
 							command = command.substring(index + 1).trim();
 							index = command.indexOf("\"", 1);
+							if (index < 0) {
+								System.out.println("Invalid article content");
+								continue;
+							}
 							String articleContent = command.substring(1, index);
 							String idStr = command.substring(index + 1).trim();
 							Machine machine = client.parseAndGetMachine(idStr);
 							if (machine == null) {
 								System.out
-										.println("Machine not found in list. Will update the replica list now");
+										.println("Replica server not found in list. Will update the replica list now");
 								client.refreshReplicaServers();
 							} else {
 								client.postArticle(new Article(0, id,
@@ -329,6 +369,7 @@ public class Client {
 					}
 				} else if (command.startsWith(COMMAND_STOP)) {
 					stopped = true;
+					System.out.println("Exiting client.");
 				}
 			}
 		} catch (Exception e) {

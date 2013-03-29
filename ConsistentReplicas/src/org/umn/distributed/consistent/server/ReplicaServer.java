@@ -17,7 +17,7 @@ public abstract class ReplicaServer extends AbstractServer {
 
 	protected static final String INTERNAL_WRITE_COMMAND = "INWRITE";
 	public static final String WRITE_COMMAND = "WRITE";
-	public static final String READ_COMMAND = "READ"; //READ from client
+	public static final String READ_COMMAND = "READ"; // READ from client
 	public static final String READITEM_COMMAND = "RDITEM";
 
 	private static final String START_ELECTION_COMMAND = "STRTELEC";
@@ -89,17 +89,18 @@ public abstract class ReplicaServer extends AbstractServer {
 			throw e;
 		}
 	}
-	
+
 	@Override
 	public void showInfo() {
 		logger.info("********************************* Replica info **************************************");
-		logger.info("Server IP: " + this.myInfo.getIP() + ", Server Port: " + this.myInfo.getExternalPort());
+		logger.info("ID:" + this.myInfo.getId() + ", IP:" + this.myInfo.getIP()
+				+ ", Port:" + this.myInfo.getExternalPort());
 		logger.info("*************************************************************************************");
-		if(this.coordinator) {
+		if (this.coordinator) {
 			this.coordinatorServer.showInfo();
 		}
 	}
-	
+
 	protected void preRegister() throws Exception {
 		logger.debug("Pre registering");
 		if (this.coordinator) {
@@ -245,7 +246,6 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 	public abstract byte[] handleSpecificRequest(String request);
-	
 
 	public void startElection() {
 		/**
@@ -260,4 +260,3 @@ public abstract class ReplicaServer extends AbstractServer {
 	}
 
 }
-

@@ -36,14 +36,14 @@ public abstract class Coordinator extends AbstractServer {
 			throw e;
 		}
 	}
-	
+
 	@Override
 	public void showInfo() {
-		logger.info("******************************** Coordinator info ************************************");
-		logger.info("Coordinator IP: " + this.myInfo.getIP()
-				+ ", Coordinator Port: " + this.myInfo.getPort());
+		logger.info("******************************* Coordinator info ************************************");
+		logger.info("IP:" + this.myInfo.getIP() + ", Port:"
+				+ this.myInfo.getPort());
 		logger.info("*************************************************************************************");
-		
+
 	}
 
 	@Override

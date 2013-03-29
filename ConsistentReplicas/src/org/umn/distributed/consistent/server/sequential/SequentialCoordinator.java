@@ -20,7 +20,7 @@ public class SequentialCoordinator extends Coordinator {
 	public int getId() {
 		return articleID.getAndIncrement();
 	}
-	
+
 	@Override
 	public byte[] handleSpecificRequest(String reqStr) {
 		if (reqStr.startsWith(WRITE_COMMAND)) {

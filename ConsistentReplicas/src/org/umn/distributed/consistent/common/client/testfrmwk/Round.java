@@ -9,13 +9,15 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 public class Round {
 	String name;
 	List<Operation> operations = new ArrayList<Operation>();
-	public Round(String name){
+
+	public Round(String name) {
 		this.name = name;
 	}
-	public void addOperation(Operation op){
+
+	public void addOperation(Operation op) {
 		this.operations.add(op);
 	}
-	
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -26,6 +28,7 @@ public class Round {
 		builder.append("]");
 		return builder.toString();
 	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -33,6 +36,7 @@ public class Round {
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
 		return result;
 	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -49,5 +53,5 @@ public class Round {
 			return false;
 		return true;
 	}
-	
+
 }

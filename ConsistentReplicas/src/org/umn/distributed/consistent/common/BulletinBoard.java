@@ -18,7 +18,8 @@ public class BulletinBoard {
 	private static final Integer BASE_ARTICLE_ID = 0;
 	public static final String FORMAT_START = "{";
 	public static final String FORMAT_ENDS = "}";
-	public static final String NULL_ARTICLE_START = Article.FORMAT_START + "null";
+	public static final String NULL_ARTICLE_START = Article.FORMAT_START
+			+ "null";
 	// TODO need to protect this map under ReentrantReadWriteLock
 
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
@@ -491,8 +492,8 @@ public class BulletinBoard {
 	}
 
 	/**
-	 * expects articleString as article1;article2;..
-	 * unused
+	 * expects articleString as article1;article2;.. unused
+	 * 
 	 * @param articleListInString
 	 * @return
 	 */

@@ -36,7 +36,7 @@ public class Props {
 
 	public static int maxPseudoNetworkDelay;
 	public static String logFilePath;
-	
+
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {
@@ -89,7 +89,7 @@ public class Props {
 			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty(
 					"maxPseudoNetworkDelay", DEFAULT_MAX_PSEUDO_NW_DELAY));
 			logFilePath = prop.getProperty("logFilePath");
-			
+
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

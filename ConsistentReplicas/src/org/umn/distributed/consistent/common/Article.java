@@ -90,7 +90,8 @@ public class Article {
 			throws IllegalArgumentException {
 		if (!articleStr.startsWith(Article.FORMAT_START)
 				|| !articleStr.endsWith(Article.FORMAT_END)) {
-			throw new IllegalArgumentException("Invalid article format = " + articleStr);
+			throw new IllegalArgumentException("Invalid article format = "
+					+ articleStr);
 		}
 		articleStr = articleStr.substring(1, articleStr.length() - 1);
 		String articleParams[] = articleStr.split("\\|", -1);

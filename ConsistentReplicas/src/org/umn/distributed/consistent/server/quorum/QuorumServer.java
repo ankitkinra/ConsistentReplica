@@ -591,8 +591,20 @@ public class QuorumServer extends ReplicaServer {
 			int articleToRead = Integer.parseInt(intStr);
 
 			Article aRead = this.bb.getArticle(articleToRead);
+			StringBuilder response = new StringBuilder();
+			if (aRead == null) {
+				response.append(COMMAND_FAILED);
+				if (articleToRead < this.bb.getMaxId()) {
+					response.append(COMMAND_PARAM_SEPARATOR).append(
+							"Seems valid article but server not synced");
+				} else {
+					response.append(COMMAND_PARAM_SEPARATOR).append(
+							"Please try later");
+				}
+			} else {
+				response.append(COMMAND_SUCCESS);
+			}
 
-			StringBuilder response = new StringBuilder(COMMAND_SUCCESS);
 			response.append(COMMAND_PARAM_SEPARATOR).append(
 					aRead != null ? aRead : "");
 			return Utils.stringToByte(response.toString());
@@ -739,15 +751,15 @@ public class QuorumServer extends ReplicaServer {
 		// start the sync thread
 		HashMap<Machine, String> responseMap = getBBFromMachines(
 				firstTimeSyncQuorum, this.lastSyncedId);
-		logger.info("from postRegister(); before merging;; lastSyncedId=" + lastSyncedId
-				+ ";response=" + responseMap);
+		logger.info("from postRegister(); before merging;; lastSyncedId="
+				+ lastSyncedId + ";response=" + responseMap);
 		mergeResponsesWithLocal(responseMap);
 		// doing this instead of calling sync as we want to wait on this
 		// operation
 
 		lastSyncedId = this.bb.getMaxId();
-		logger.info("$$$$$$$from postRegister(); before merging;; =" + this.bb.toString()
-				+ ";\nlastSyncedId=" + lastSyncedId);
+		logger.info("$$$$$$$from postRegister(); before merging;; ="
+				+ this.bb.toString() + ";\nlastSyncedId=" + lastSyncedId);
 
 		/**
 		 * before we are ready to take requests we need to get upto with all the

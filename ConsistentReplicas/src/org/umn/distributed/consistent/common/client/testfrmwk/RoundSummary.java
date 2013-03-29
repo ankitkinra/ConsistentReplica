@@ -30,7 +30,7 @@ public class RoundSummary {
 		}
 		summary.addOperation(timeTaken);
 	}
-	
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -42,8 +42,6 @@ public class RoundSummary {
 		return builder.toString();
 	}
 
-
-
 	class OperationSummary {
 
 		String operationName;
@@ -52,6 +50,7 @@ public class RoundSummary {
 		long minTime = Long.MAX_VALUE;
 		long maxTime = Long.MIN_VALUE;
 		long averageTime;
+
 		public OperationSummary(String uniqueOpName) {
 			this.operationName = uniqueOpName;
 		}
@@ -89,13 +88,11 @@ public class RoundSummary {
 		}
 
 		private long getAverageTime() {
-			if(numberOfOperations > 0){
-				return cumulativeTime/numberOfOperations;
+			if (numberOfOperations > 0) {
+				return cumulativeTime / numberOfOperations;
 			}
 			return 0;
 		}
 
-		
-		
 	}
 }

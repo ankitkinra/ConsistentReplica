@@ -9,6 +9,7 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.umn.distributed.consistent.common.LoggingUtils;
 import org.umn.distributed.consistent.common.Machine;
 import org.umn.distributed.consistent.common.Props;
 import org.umn.distributed.consistent.common.TCPClient;
@@ -19,7 +20,7 @@ import org.umn.distributed.consistent.server.quorum.CommandCentral.COORDINATOR_R
 
 public class ReadYourWritesCoordinator extends Coordinator {
 
-	private static final int MAX_NUMBER_OF_BACKUP_REPLICAS_TO_MAINTAIN = 3;
+	private static final int MAX_NUMBER_OF_BACKUP_REPLICAS_TO_MAINTAIN = 1;
 	protected TreeMap<Integer, Machine> knownBackups = new TreeMap<Integer, Machine>();
 	private ReentrantReadWriteLock rwlKnownBackups = new ReentrantReadWriteLock();
 	protected final Lock readLKnownBackups = rwlKnownBackups.readLock();
@@ -212,8 +213,15 @@ public class ReadYourWritesCoordinator extends Coordinator {
 	 */
 	protected Set<Machine> getHeartbeatMachineList() {
 		Set<Machine> heartbeatMachines = new HashSet<Machine>();
-		heartbeatMachines.addAll(getMachineList());
-		heartbeatMachines.addAll(getKnownBackupMachineSet());
+		Set<Machine> knownSet = getMachineList();
+		Set<Machine> knownBackupSet = getKnownBackupMachineSet();
+		heartbeatMachines.addAll(knownSet);
+		heartbeatMachines.addAll(knownBackupSet);
+		LoggingUtils
+				.logInfo(
+						logger,
+						"Starting heartbeat for ReadYourWrites Coordinator; knownSet=%s; knownBackupSet=%s",
+						knownSet, knownBackupSet);
 		return heartbeatMachines;
 	}
 
@@ -304,8 +312,7 @@ public class ReadYourWritesCoordinator extends Coordinator {
 						try {
 							Thread.sleep(Props.HEARTBEAT_INTERVAL);
 						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+							logger.error("Error while quorum creation", e);
 						}
 					} else {
 						quorumFormed = true; // break out of loop

@@ -1,0 +1,24 @@
+<testsuite>
+	<name>WriteOnlyTestCase</name>
+	<rounds>
+		<round>
+			<name>Round1</name>
+			<operations>
+				<operation>
+					<sno>1</sno>
+					<name>post</name>
+					<params>
+						<entry>
+							<string>root</string>
+							<string>20</string>
+						</entry>
+						<entry>
+							<string>child</string>
+							<string>20</string>
+						</entry>
+					</params>
+				</operation>
+			</operations>
+		</round>
+	</rounds>
+</testsuite>

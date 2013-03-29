@@ -71,6 +71,8 @@ public class ReadYourWritesServer extends ReplicaServer {
 			// merge stage
 			logger.info("from syncBB lastSyncedId=" + lastSyncedId
 					+ ";response=" + responseMap);
+			logger.info("Status of BB before sync; bb="
+					+ this.bb.toShortString());
 			mergeResponsesWithLocal(responseMap);
 			// doing this instead of calling sync as we want to wait on this
 			// operation
@@ -91,7 +93,7 @@ public class ReadYourWritesServer extends ReplicaServer {
 
 	private void mergeResponsesWithLocal(HashMap<Machine, String> responseMap) {
 		BulletinBoard mergedBulletinBoard = new BulletinBoard();
-		
+
 		for (Map.Entry<Machine, String> machineBBStr : responseMap.entrySet()) {
 			// get BB from string
 			String bbStr = machineBBStr.getValue()
@@ -152,6 +154,7 @@ public class ReadYourWritesServer extends ReplicaServer {
 						articleId = populateWriteQuorum(articleId,
 								successfulServers, failedServers);
 						aToWrite.setId(articleId);
+						write(aToWrite.toString()); // writing to myself
 						executeWriteRequestOnWriteQuorum(writeStatus,
 								successfulServers, failedServers, aToWrite);
 					} catch (IOException e) {
@@ -187,7 +190,8 @@ public class ReadYourWritesServer extends ReplicaServer {
 
 		if (failedServers != null) {
 			if (failedServers.contains(myInfo)) {
-				// need to write local
+				// if my server is in the list, just write local, this means
+				// that I am primary backup too
 				write(aToWrite.toString());
 				successfulServers.add(myInfo);
 				failedServers.remove(myInfo);
@@ -522,6 +526,7 @@ public class ReadYourWritesServer extends ReplicaServer {
 			 * Need to return to the client the local bb which is appended with
 			 * the latest article written across the read quorum
 			 */
+
 			syncBB();
 			return Utils.stringToByte(COMMAND_SUCCESS + COMMAND_PARAM_SEPARATOR
 					+ this.bb.toShortString());
@@ -534,6 +539,7 @@ public class ReadYourWritesServer extends ReplicaServer {
 							.length());
 			int articleToRead = Integer.parseInt(intStr);
 
+			syncBB();
 			Article aRead = this.bb.getArticle(articleToRead);
 			if (aRead == null) {
 				syncBB(); // TODO or get max Id from backup and check if this is

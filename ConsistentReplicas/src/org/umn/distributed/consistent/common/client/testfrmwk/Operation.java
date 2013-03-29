@@ -8,12 +8,13 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 public class Operation {
 	int sno = 0;
 	String name;
-	
+	int repeatations = 0;
 	HashMap<String, String> params = new HashMap<String, String>();
 
-	public Operation(int sno, String name) {
+	public Operation(int sno, String name, int repeatations) {
 		this.sno = sno;
 		this.name = name;
+		this.repeatations = repeatations;
 	}
 
 	public void addParam(String name, String value) {
@@ -27,6 +28,8 @@ public class Operation {
 		builder.append(sno);
 		builder.append(", name=");
 		builder.append(name);
+		builder.append(", repeatations=");
+		builder.append(repeatations);
 		builder.append(", params=");
 		builder.append(params);
 		builder.append("]");

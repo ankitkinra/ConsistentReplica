@@ -39,8 +39,8 @@ public class CommandCentral {
 			return this.name() + RESPONSE_SUFFIX;
 		}
 	};
-	public static final String ARTICLE_ID_PARAMETER_KEY = "AID";
 
+	public static final String ARTICLE_ID_PARAMETER_KEY = "AID";
 
 	/**
 	 * <pre>
@@ -64,7 +64,7 @@ public class CommandCentral {
 	 * </pre>
 	 */
 	public static enum COORDINATOR_REQUESTS {
-		HEARTBEAT,SYNC;
+		HEARTBEAT, SYNC;
 		public String RESPONSE() {
 			return this.name() + RESPONSE_SUFFIX;
 		}

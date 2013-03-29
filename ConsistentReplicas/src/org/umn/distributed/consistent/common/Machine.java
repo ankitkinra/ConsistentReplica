@@ -94,13 +94,12 @@ public class Machine {
 		return true;
 	}
 
-
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(FORMAT_START).append(id).append("|").append(IP)
-				.append("|").append(port).append("|")
-				.append(extPort).append(FORMAT_END);
+				.append("|").append(port).append("|").append(extPort)
+				.append(FORMAT_END);
 		return builder.toString();
 	}
 
@@ -108,7 +107,8 @@ public class Machine {
 			throws IllegalArgumentException {
 		if (!machineStr.startsWith(FORMAT_START)
 				|| !machineStr.endsWith(FORMAT_END)) {
-			throw new IllegalArgumentException("Invalid machine format="+machineStr);
+			throw new IllegalArgumentException("Invalid machine format="
+					+ machineStr);
 		}
 		machineStr = machineStr.substring(1, machineStr.length() - 1);
 		String machineParams[] = machineStr.split("\\|");
@@ -133,11 +133,11 @@ public class Machine {
 		List<Machine> listMachines = new LinkedList<Machine>();
 		int index = -1;
 		int start = 0;
-		while((index = req.indexOf("]", start)) > -1) {
+		while ((index = req.indexOf("]", start)) > -1) {
 			Machine machine = Machine.parse(req.substring(start, index + 1));
 			listMachines.add(machine);
 			start = index + 1;
-			
+
 		}
 		return listMachines;
 	}

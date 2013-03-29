@@ -20,7 +20,7 @@ public class TCPClient {
 		}
 		// Adding a random delay
 		int maxDelay = Props.maxPseudoNetworkDelay;
-		if(maxDelay < 1){
+		if (maxDelay < 1) {
 			maxDelay = ClientProps.maxPseudoNetworkDelay;
 		}
 		long delay = randomDelay.nextInt(maxDelay);

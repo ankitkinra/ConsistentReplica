@@ -34,21 +34,21 @@ public class TestClient {
 	private static final String POST_OPERATION_NAME = "post";
 	private String xmlTestCasePath = null;
 	private Logger logger = Logger.getLogger(TestClient.class);
-	private ArrayList<Round> rounds = new ArrayList<Round>();
+	private TestSuite testSuite = null;
 	/**
 	 * TreeMap gives us the sorted view of the order the articles were published
 	 * at
 	 */
 	private TreeMap<Integer, ArticlesPublished> articlesPublishedRecord = new TreeMap<Integer, ArticlesPublished>();
+	private LinkedList<Integer> publishedArticleIds = new LinkedList<Integer>();
 	private Machine myCoord;
 	private HashMap<Integer, RoundSummary> roundSummaries = new HashMap<Integer, RoundSummary>();
-	private Random r = new Random();
+	private Random randomGenerator = new Random();
 
 	public TestClient(String xmlFilePath, String coordinatorIp,
 			int coordinatorPort) {
 		this.xmlTestCasePath = xmlFilePath;
-		Round newRound = getParsedRound(xmlFilePath);
-		this.rounds.add(newRound);
+		this.testSuite = getParsedTestSuite(xmlFilePath);
 		this.myCoord = new Machine(coordinatorIp, coordinatorPort);
 
 	}
@@ -59,7 +59,7 @@ public class TestClient {
 		int coopPort = Integer.parseInt(args[2]);
 		ClientProps.loadProperties(args[3]);
 		TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
-		System.out.println(tc.rounds);
+		System.out.println(tc.testSuite);
 		tc.startTest();
 	}
 
@@ -85,9 +85,9 @@ public class TestClient {
 	}
 
 	private void startTest() {
-		for (int i = 0; i < this.rounds.size(); i++) {
+		for (int i = 0; i < this.testSuite.rounds.size(); i++) {
 			// init new summary
-			Round r = this.rounds.get(i);
+			Round r = this.testSuite.rounds.get(i);
 			RoundSummary rs = new RoundSummary(r);
 			this.roundSummaries.put(i, rs);
 			logger.info("In the testClient starting round =" + r.name);
@@ -121,10 +121,13 @@ public class TestClient {
 					 * in this server or not
 					 */
 
-					try {
-						readArticlesAndCompareOwnPublishedArticles(rs);
-					} catch (Exception e) {
-						logger.error("Error in readArticles articles", e);
+					for (int j = 0; j < op.repeatations + 1; j++) {
+						logger.info("In read items, iteration number = " + j);
+						try {
+							readArticlesAndCompareOwnPublishedArticles(rs);
+						} catch (Exception e) {
+							logger.error("Error in readArticles articles", e);
+						}
 					}
 
 				} else if (op.name.equals(READ_ITEM_COMMAND_NAME)) {
@@ -148,8 +151,8 @@ public class TestClient {
 		LoggingUtils
 				.logInfo(
 						logger,
-						"Testing rounds are over, here is the summary \n %s, \n Here is the list of articles publised = %s",
-						this.roundSummaries, this.articlesPublishedRecord);
+						"Testing rounds are over for TestSuite =%s,\n here is the summary \n %s",
+						this.testSuite, this.roundSummaries);
 
 	}
 
@@ -162,7 +165,7 @@ public class TestClient {
 			// startTimer
 			Collections.shuffle(avlblMachines);
 			Machine machineToRead = avlblMachines.get(0);
-			List<Article> articlesReturned = getArticleList(machineToRead);
+			List<String> articlesReturned = getArticleList(machineToRead);
 			// endTimer
 			long totalTimeToRead = System.currentTimeMillis() - readTimer;
 			// TODO add logs
@@ -172,14 +175,20 @@ public class TestClient {
 							logger,
 							"Article List = %s from Server =%s, retrieved in time = %s",
 							articlesReturned, machineToRead, totalTimeToRead);
+
 			/**
 			 * Check if any article is missing
 			 * 
 			 */
 
 			Set<Integer> returnedArticleIdSet = new HashSet<Integer>();
-			for (Article a : articlesReturned) {
-				returnedArticleIdSet.add(a.getId());
+			logger.info("Article List:");
+			for (String a : articlesReturned) {
+				// article would be \s+\d+.\w+
+				logger.info(a);
+				a = a.trim();
+				String[] dotSeperator = a.split("\\.");
+				returnedArticleIdSet.add(Integer.parseInt(dotSeperator[0]));
 			}
 			Set<Integer> publishedArtSet = articlesPublishedRecord.keySet();
 			publishedArtSet.removeAll(returnedArticleIdSet);
@@ -266,6 +275,7 @@ public class TestClient {
 					articlesPublishedRecord.put(randomArticle.getId(),
 							new ArticlesPublished(i, randomArticle, toPost,
 									totalTimeToPublish));
+					publishedArticleIds.add(randomArticle.getId());
 					rs.addOperationDetail(POST_OPERATION_NAME,
 							totalTimeToPublish);
 
@@ -277,15 +287,15 @@ public class TestClient {
 			List<Machine> avlblMachines = getReplicaServers();
 			List<Machine> avlblMachinCopy = new ArrayList<Machine>();
 			avlblMachinCopy.addAll(avlblMachines);
-			Article randomParentArticle = getRandomParentArticle(avlblMachinCopy);
 			if (avlblMachines.size() > 0) {
 				long timer = 0;
 				for (int i = 0; i < repliesToPost; i++) {
+					int randomParentArticleId = getRandomParentArticle(avlblMachinCopy);
 					timer = System.currentTimeMillis();
 					// startTimer
 					Collections.shuffle(avlblMachines);
 					Machine toPost = avlblMachines.get(0);
-					Article randomArticle = createReplyArticle(randomParentArticle);
+					Article randomArticle = createReplyArticle(randomParentArticleId);
 					postArticle(randomArticle, toPost);
 					// endTimer
 					long totalTimeToPublish = System.currentTimeMillis()
@@ -302,8 +312,8 @@ public class TestClient {
 		}
 	}
 
-	private Article createReplyArticle(Article randomParentArticle) {
-		return new Article(0, randomParentArticle.getId(), "TestReplyArticle_"
+	private Article createReplyArticle(int randomParentArticleId) {
+		return new Article(0, randomParentArticleId, "TestReplyArticle_"
 				+ System.currentTimeMillis(),
 				"TestReplyCONTENT........................");
 	}
@@ -316,28 +326,15 @@ public class TestClient {
 	 * this test run then we make it the parent 2) Else, we go to a random
 	 * server and pick up an article
 	 */
-	private Article getRandomParentArticle(List<Machine> avlblMachines) {
-		Article randomArticleToReturn = null;
+	private int getRandomParentArticle(List<Machine> avlblMachines) {
+		int randomArticleToReturnId = 1;
 		if (articlesPublishedRecord.size() > 0) {
 			// we have published an article in this run, pick one
-			randomArticleToReturn = articlesPublishedRecord.firstEntry()
-					.getValue().getArticle();
-		} else {
-			if (avlblMachines.size() > 0) {
-				while (randomArticleToReturn == null) {
-					Collections.shuffle(avlblMachines);
-					Machine m = avlblMachines.get(0);
-					List<Article> aList = getArticleList(m);
-					if (aList.size() > 0) {
-						randomArticleToReturn = aList.get(0);
-					} else {
-						avlblMachines.remove(0);
-					}
-				}
-			}
-
+			Collections.shuffle(publishedArticleIds);
+			randomArticleToReturnId = articlesPublishedRecord
+					.get(publishedArticleIds.peek()).getArticle().getId();
 		}
-		return randomArticleToReturn;
+		return randomArticleToReturnId;
 	}
 
 	private Article getArticle() {
@@ -367,8 +364,8 @@ public class TestClient {
 		}
 	}
 
-	private List<Article> getArticleList(Machine machine) {
-		List<Article> articles = null;
+	private List<String> getArticleList(Machine machine) {
+		List<String> articles = null;
 		try {
 			// Start with id 1. This can be changed later to handle only
 			// specific list reads
@@ -382,10 +379,10 @@ public class TestClient {
 				response = response
 						.substring((AbstractServer.COMMAND_SUCCESS + AbstractServer.COMMAND_PARAM_SEPARATOR)
 								.length());
-				articles = parseArticleList(response);
+				logger.error("response before article list process=" + response);
+				articles = Utils.getIndentedArticleList(response);
 			} else {
-				System.out
-						.println("Error reading article list from " + machine);
+				logger.error("Error reading article list from " + machine);
 			}
 		} catch (IOException e) {
 			logger.error("Error adding article", e);
@@ -430,7 +427,7 @@ public class TestClient {
 		return articles;
 	}
 
-	private static Round getParsedRound(String filePath) {
+	private static TestSuite getParsedTestSuite(String filePath) {
 		BufferedReader in = null;
 		StringBuilder sb = new StringBuilder();
 		try {
@@ -455,12 +452,13 @@ public class TestClient {
 			}
 		}
 		XStream xstream = new XStream();
+		xstream.alias("testsuite", TestSuite.class);
 		xstream.alias("round", Round.class);
 		xstream.alias("operation", Operation.class);
 
-		Round newRound = (Round) xstream.fromXML(sb.toString());
+		TestSuite suite = (TestSuite) xstream.fromXML(sb.toString());
 
-		return newRound;
+		return suite;
 	}
 
 }

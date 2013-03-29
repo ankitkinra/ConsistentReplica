@@ -1,0 +1,15 @@
+<testsuite>
+	<name>ReadOnlyTestCases</name>
+	<rounds>
+		<round>
+			<name>round1</name>
+			<operations>
+				<operation>
+					<sno>1</sno>
+					<name>readItems</name>
+					<repeatations>1</repeatations>
+				</operation>
+			</operations>
+		</round>
+	</rounds>
+</testsuite>

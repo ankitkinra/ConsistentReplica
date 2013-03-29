@@ -36,10 +36,6 @@ public class Props {
 
 	public static int maxPseudoNetworkDelay;
 
-	// static{
-	// loadProperties("config.properties");
-	// }
-	//
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {
@@ -88,7 +84,7 @@ public class Props {
 			 * making this in increments of 10 only
 			 */
 			percentIncreaseWriteQuorum = (percentIncreaseWriteQuorum / 10) * 10;
-			
+
 			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty(
 					"maxPseudoNetworkDelay", DEFAULT_MAX_PSEUDO_NW_DELAY));
 		} catch (IOException ex) {

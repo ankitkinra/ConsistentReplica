@@ -9,7 +9,7 @@ import org.umn.distributed.consistent.server.sequential.SequentialServer;
 
 public class ConsistentReplica {
 
-	public static final String PROPERTIES_FILE = "server.properties";
+	public static final String PROPERTIES_FILE = "src/config.properties";
 	public static final String COORDINATOR_PARAM = "coordinator";
 	public static final String COMMAND_SHOWINFO = "showinfo";
 	public static final String COMMAND_STOP = "stop";

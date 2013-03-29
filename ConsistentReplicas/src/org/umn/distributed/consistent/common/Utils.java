@@ -201,7 +201,7 @@ public class Utils {
 					str.substring(
 							BulletinBoard.NULL_ARTICLE_START.length() + 1,
 							str.length() - 1)).append(".");
-			builder.append("Article details no available at this replica");
+			builder.append("Article details not available at this replica");
 		} else {
 			Article article = Article.parseArticle(str);
 			builder.append(article.getId()).append(". ");

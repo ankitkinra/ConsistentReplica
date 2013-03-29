@@ -243,7 +243,7 @@ public class Client {
 		Client client = new Client(args[0], port);
 		try {
 			client.refreshReplicaServers();
-			boolean stopped = true;
+			boolean stopped = false;
 			while (!stopped) {
 				showUsage();
 				String command = client.readLine();

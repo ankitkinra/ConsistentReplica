@@ -18,7 +18,7 @@ public class BulletinBoard {
 	private static final Integer BASE_ARTICLE_ID = 0;
 	public static final String FORMAT_START = "{";
 	public static final String FORMAT_ENDS = "}";
-	public static final String NULL_ARTICLE = "[null]";
+	public static final String NULL_ARTICLE_START = Article.FORMAT_START + "null";
 	// TODO need to protect this map under ReentrantReadWriteLock
 
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
@@ -172,7 +172,7 @@ public class BulletinBoard {
 				Article article = boardEntry.getArticle();
 				if (article == null || article.getParentId() == 0) {
 					// TODO: create a copy of the object before passing here
-					appendToString(article.getId(), builder, detailed);
+					appendToString(entry.getKey(), builder, detailed);
 				}
 			}
 			return builder.toString();
@@ -190,7 +190,7 @@ public class BulletinBoard {
 			Article article = entry.getArticle();
 			String articleStr = null;
 			if (article == null) {
-				articleStr = NULL_ARTICLE;
+				articleStr = NULL_ARTICLE_START + "|" + id + Article.FORMAT_END;
 			} else {
 				if (detailed) {
 					articleStr = entry.getArticle().toString();
@@ -240,7 +240,7 @@ public class BulletinBoard {
 			}
 			indexEnd += 1;
 			String articleStr = boardStr.substring(indexStart, indexEnd);
-			if (!articleStr.equals(NULL_ARTICLE)) {
+			if (!articleStr.startsWith(NULL_ARTICLE_START)) {
 				Article article = Article.parseArticle(articleStr);
 				if (article.isRoot()) {
 					board.addArticle(article);

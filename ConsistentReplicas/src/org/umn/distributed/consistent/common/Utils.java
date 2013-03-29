@@ -193,6 +193,15 @@ public class Utils {
 		for (int i = FORMAT_INDENT; i < indent; i++) {
 			builder.append(" ");
 		}
+		if(str.startsWith(BulletinBoard.NULL_ARTICLE_START)) {
+			builder.append(str.substring(BulletinBoard.NULL_ARTICLE_START.length() + 1, str.length() - 1)).append(".");
+			builder.append("Article details no available at this replica");
+		}
+		else {
+			Article article = Article.parseArticle(str);
+			builder.append(article.getId()).append(". ");
+			builder.append(article.getTitle()).append("    ").append(article.getContent());
+		}
 		builder.append(str);
 		return builder.toString();
 	}

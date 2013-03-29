@@ -54,18 +54,28 @@ public class TestClient {
 
 	}
 
+	public static void showUsage() {
+		System.out.println("Usage:");
+		System.out
+				.println("Run tests: ./runtests.sh <Test Config File> <Coordinator Ip> <Coordinator Port> [<config file path>]");
+	}
+
 	public static void main(String[] args) {
-		String xmlTestFile = args[0];
-		String coopIP = args[1];
-		int coopPort = Integer.parseInt(args[2]);
-		if (args.length == 4) {
-			ClientProps.loadProperties(args[3]);
+		if (args.length == 3 || args.length == 4) {
+			String xmlTestFile = args[0];
+			String coopIP = args[1];
+			int coopPort = Integer.parseInt(args[2]);
+			if (args.length == 4) {
+				ClientProps.loadProperties(args[3]);
+			} else {
+				ClientProps.loadProperties(PROPERTIES_FILE);
+			}
+			TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
+			System.out.println(tc.testSuite);
+			tc.startTest();
 		} else {
-			ClientProps.loadProperties(PROPERTIES_FILE);
+			showUsage();
 		}
-		TestClient tc = new TestClient(xmlTestFile, coopIP, coopPort);
-		System.out.println(tc.testSuite);
-		tc.startTest();
 	}
 
 	private List<Machine> getReplicaServers() throws Exception {
@@ -195,7 +205,8 @@ public class TestClient {
 				String[] dotSeperator = a.split("\\.");
 				returnedArticleIdSet.add(Integer.parseInt(dotSeperator[0]));
 			}
-			Set<Integer> publishedArtSet = new HashSet<Integer>(articlesPublishedRecord.keySet());
+			Set<Integer> publishedArtSet = new HashSet<Integer>(
+					articlesPublishedRecord.keySet());
 			publishedArtSet.removeAll(returnedArticleIdSet);
 			if (publishedArtSet.size() > 0) {
 				// missing articles

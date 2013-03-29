@@ -130,7 +130,7 @@ public abstract class ReplicaServer extends AbstractServer {
 			this.myInfo.setid(Integer.parseInt(respParams[1]));
 			logger.info("Updated " + this.myInfo + " with new id");
 		}
-		LoggingUtils.addSpecificFileAppender(getClass(), "logs\\",
+		LoggingUtils.addSpecificFileAppender(getClass(), "logs/",
 				this.myInfo.getId() + "", Level.DEBUG);
 		logger.info(myInfo + " registered to coordinator " + coordinatorMachine);
 	}
